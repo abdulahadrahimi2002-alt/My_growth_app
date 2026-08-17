@@ -32,6 +32,17 @@ if os.path.exists(DATA_FILE):
 else:
     data = {}
 
+# تابع تعیین وضعیت و رنگ بر اساس درصد
+def get_status_and_color(val):
+    if val >= 75:
+        return "✨ عالی", "#00FF66"  # سبز فسفری درخشان
+    elif val >= 50:
+        return "🟢 خوب", "#33CC66"   # سبز
+    elif val >= 30:
+        return "🟠 بد", "#FF9900"    # نارنجی
+    else:
+        return "🔴 خیلی بد", "#FF3333" # قرمز پررنگ
+
 tab1, tab2, tab3 = st.tabs(["📝 ثبت عملکرد امروز", "💓 گراف رشد و عملکرد", "⚙️ مدیریت فعالیت‌ها"])
 
 with tab1:
@@ -49,18 +60,18 @@ with tab1:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         
-        status_msg = "عالی و خوب! 🟢" if avg >= 50 else "نیازمند تلاش بیشتر 🔴"
+        status_msg, _ = get_status_and_color(avg)
         st.success(f"عملکرد امروز ({today_str}) ثبت شد: {avg}% ({status_msg})")
 
 with tab2:
-    st.subheader("💓 گراف روند رشد (سبز = خوب | قرمز = ضعیف)")
+    st.subheader("💓 گراف روند رشد بر اساس سطح عملکرد")
+    st.caption("🔴 ۱۰-۳۰٪: خیلی بد | 🟠 ۳۰-۵۰٪: بد | 🟢 ۵۰-۷۵٪: خوب | ✨ ۷۵-۱۰۰٪: عالی")
     
     if data:
         sorted_dates = sorted(data.keys())
         total_days = len(sorted_dates)
         
-        # تعیین تعداد نقاط محور افقی (حداقل ۳۰ روز یا بیشتر به تعداد روزهای ثبت شده)
-        display_range = max(30, total_days)
+        display_range = max(10, total_days + 2)
         days_labels = [f"روز {i+1}" for i in range(display_range)]
         y_values = [None] * display_range
         colors = []
@@ -69,27 +80,18 @@ with tab2:
             val = data[d]["percent"]
             y_values[idx] = val
             days_labels[idx] = f"روز {idx+1}<br>({d[-5:]})"
-            # رنگ سبز برای ۵۰ به بالا و قرمز برای زیر ۵۰
-            colors.append("#00FF66" if val >= 50 else "#FF3333")
+            _, color = get_status_and_color(val)
+            colors.append(color)
 
         fig = go.Figure()
 
-        # اضافه کردن خط اصلی بین نقاط
-        fig.add_trace(go.Scatter(
-            x=days_labels,
-            y=y_values,
-            mode='lines',
-            name='روند',
-            line=dict(color='#888888', width=2),
-            connectgaps=True
-        ))
-
-        # اضافه کردن نقاط با رنگ سبز/قرمز هوشمند
+        # خط اصلی متصل‌کننده نقاط
         fig.add_trace(go.Scatter(
             x=days_labels[:total_days],
             y=y_values[:total_days],
-            mode='markers+text',
-            name='عملکرد روزانه',
+            mode='lines+markers+text',
+            name='روند عملکرد',
+            line=dict(color='#888888', width=2),
             marker=dict(
                 size=12,
                 color=colors,
@@ -100,9 +102,9 @@ with tab2:
         ))
 
         fig.update_layout(
-            title="نمودار پیوسته عملکرد (🟢 خوب >= ۵۰٪ | 🔴 ضعیف < ۵۰٪)",
-            xaxis=dict(title="روزهای استفاده (از اولین روز شروع شما)", tickangle=0),
-            yaxis=dict(title="درصد رشد", range=[0, 105], dtick=20),
+            title="نمودار پیوسته و هوشمند عملکرد",
+            xaxis=dict(title="روزهای استفاده", tickangle=0, type='category'),
+            yaxis=dict(title="درصد رشد", range=[0, 110], dtick=20),
             paper_bgcolor="#0e1117",
             plot_bgcolor="#050d08",
             font=dict(color="#FFFFFF"),
@@ -120,8 +122,8 @@ with tab2:
         df_list = []
         for i, d in enumerate(sorted_dates):
             val = data[d]["percent"]
-            status = "🟢 خوب" if val >= 50 else "🔴 ضعیف"
-            df_list.append({"روز": f"روز {i+1} ({d})", "درصد رشد": f"{val}%", "وضعیت": status})
+            status_text, _ = get_status_and_color(val)
+            df_list.append({"روز": f"روز {i+1} ({d})", "درصد رشد": f"{val}%", "وضعیت": status_text})
         
         df = pd.DataFrame(df_list)
         st.dataframe(df, use_container_width=True)
