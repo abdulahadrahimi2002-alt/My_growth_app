@@ -32,11 +32,11 @@ if os.path.exists(DATA_FILE):
 else:
     data = {}
 
-tab1, tab2, tab3 = st.tabs(["📝 ثبت عملکرد امروز", "💓 گراف ۳۰ روزه رشد", "⚙️ مدیریت فعالیت‌ها"])
+tab1, tab2, tab3 = st.tabs(["📝 ثبت عملکرد امروز", "💓 گراف رشد و عملکرد", "⚙️ مدیریت فعالیت‌ها"])
 
 with tab1:
     st.subheader("ثبت فعالیت‌های امروز")
-    today = st.date_input("تاریخ", value=datetime.today())
+    today = st.date_input("تاریخ ثبت", value=datetime.today())
     today_str = today.strftime("%Y-%m-%d")
     
     scores = {}
@@ -48,60 +48,85 @@ with tab1:
         data[today_str] = {"total_acts": len(activities), "percent": avg}
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        st.success(f"عملکرد امروز ({today_str}) با موفقیت ثبت شد: {avg}%")
+        
+        status_msg = "عالی و خوب! 🟢" if avg >= 50 else "نیازمند تلاش بیشتر 🔴"
+        st.success(f"عملکرد امروز ({today_str}) ثبت شد: {avg}% ({status_msg})")
 
 with tab2:
-    st.subheader("💓 گراف ۳۰ روزه روند رشد و عملکرد (۰ تا ۱۰۰٪)")
+    st.subheader("💓 گراف روند رشد (سبز = خوب | قرمز = ضعیف)")
     
-    # ساخت لیست ۳۰ روزه
-    days_labels = [f"روز {i}" for i in range(1, 31)]
-    y_values = [None] * 30
-    
-    sorted_dates = sorted(data.keys())
-    for idx, d in enumerate(sorted_dates):
-        if idx < 30:
-            y_values[idx] = data[d]["percent"]
-            days_labels[idx] = f"روز {idx+1}<br>({d[-5:]})"
-
-    # ساخت نمودار حرفه‌ای Plotly
-    fig = go.Figure()
-
-    # اضافه کردن خط و نقاط گراف
-    fig.add_trace(go.Scatter(
-        x=days_labels,
-        y=y_values,
-        mode='lines+markers+text',
-        name='درصد رشد',
-        line=dict(color='#00FF66', width=3),
-        marker=dict(size=10, color='#00FF66', line=dict(width=2, color='white')),
-        text=[f"{v}%" if v is not None else "" for v in y_values],
-        textposition="top center",
-        connectgaps=True
-    ))
-
-    # تنظیمات محورها و تم مشکی نوار قلب
-    fig.update_layout(
-        title="نمودار ضربانی رشد روزانه",
-        xaxis=dict(title="روزهای ماه (۱ تا ۳۰)", tickangle=0),
-        yaxis=dict(title="درصد رشد", range=[0, 105], dtick=20),
-        paper_bgcolor="#0e1117",
-        plot_bgcolor="#050d08",
-        font=dict(color="#00FF66"),
-        height=500,
-        margin=dict(l=20, r=20, t=50, b=50)
-    )
-
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#0f2617')
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#0f2617')
-
-    st.plotly_chart(fig, use_container_width=True)
-
     if data:
-        st.write("📋 **جدول جزئیات ثبت شده:**")
-        df = pd.DataFrame([{"روز": f"روز {i+1} ({d[-5:]})", "درصد رشد": data[d]["percent"]} for i, d in enumerate(sorted_dates)])
+        sorted_dates = sorted(data.keys())
+        total_days = len(sorted_dates)
+        
+        # تعیین تعداد نقاط محور افقی (حداقل ۳۰ روز یا بیشتر به تعداد روزهای ثبت شده)
+        display_range = max(30, total_days)
+        days_labels = [f"روز {i+1}" for i in range(display_range)]
+        y_values = [None] * display_range
+        colors = []
+
+        for idx, d in enumerate(sorted_dates):
+            val = data[d]["percent"]
+            y_values[idx] = val
+            days_labels[idx] = f"روز {idx+1}<br>({d[-5:]})"
+            # رنگ سبز برای ۵۰ به بالا و قرمز برای زیر ۵۰
+            colors.append("#00FF66" if val >= 50 else "#FF3333")
+
+        fig = go.Figure()
+
+        # اضافه کردن خط اصلی بین نقاط
+        fig.add_trace(go.Scatter(
+            x=days_labels,
+            y=y_values,
+            mode='lines',
+            name='روند',
+            line=dict(color='#888888', width=2),
+            connectgaps=True
+        ))
+
+        # اضافه کردن نقاط با رنگ سبز/قرمز هوشمند
+        fig.add_trace(go.Scatter(
+            x=days_labels[:total_days],
+            y=y_values[:total_days],
+            mode='markers+text',
+            name='عملکرد روزانه',
+            marker=dict(
+                size=12,
+                color=colors,
+                line=dict(width=2, color='white')
+            ),
+            text=[f"{v}%" for v in y_values[:total_days]],
+            textposition="top center"
+        ))
+
+        fig.update_layout(
+            title="نمودار پیوسته عملکرد (🟢 خوب >= ۵۰٪ | 🔴 ضعیف < ۵۰٪)",
+            xaxis=dict(title="روزهای استفاده (از اولین روز شروع شما)", tickangle=0),
+            yaxis=dict(title="درصد رشد", range=[0, 105], dtick=20),
+            paper_bgcolor="#0e1117",
+            plot_bgcolor="#050d08",
+            font=dict(color="#FFFFFF"),
+            height=500,
+            showlegend=False,
+            margin=dict(l=20, r=20, t=50, b=50)
+        )
+
+        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#1e2621')
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#1e2621')
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.write("📋 **جدول کل جزئیات ثبت شده:**")
+        df_list = []
+        for i, d in enumerate(sorted_dates):
+            val = data[d]["percent"]
+            status = "🟢 خوب" if val >= 50 else "🔴 ضعیف"
+            df_list.append({"روز": f"روز {i+1} ({d})", "درصد رشد": f"{val}%", "وضعیت": status})
+        
+        df = pd.DataFrame(df_list)
         st.dataframe(df, use_container_width=True)
     else:
-        st.info("هنوز هیچ داده‌ای ثبت نشده است. از تب اول عملکرد امروز را ثبت کنید.")
+        st.info("هنوز هیچ داده‌ای ثبت نشده است. اولین ثبت شما به عنوان «روز ۱» محاسبه خواهد شد.")
 
 with tab3:
     st.subheader("افزودن فعالیت جدید")
