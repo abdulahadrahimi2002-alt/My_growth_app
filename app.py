@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 import json
 import os
 from datetime import datetime
@@ -50,19 +51,54 @@ with tab1:
         st.success(f"عملکرد امروز ({today_str}) با موفقیت ثبت شد: {avg}%")
 
 with tab2:
-    st.subheader("💓 گراف ۳۰ روزه روند رشد")
+    st.subheader("💓 گراف ۳۰ روزه روند رشد و عملکرد (۰ تا ۱۰۰٪)")
+    
+    # ساخت لیست ۳۰ روزه
+    days_labels = [f"روز {i}" for i in range(1, 31)]
+    y_values = [None] * 30
+    
+    sorted_dates = sorted(data.keys())
+    for idx, d in enumerate(sorted_dates):
+        if idx < 30:
+            y_values[idx] = data[d]["percent"]
+            days_labels[idx] = f"روز {idx+1}<br>({d[-5:]})"
+
+    # ساخت نمودار حرفه‌ای Plotly
+    fig = go.Figure()
+
+    # اضافه کردن خط و نقاط گراف
+    fig.add_trace(go.Scatter(
+        x=days_labels,
+        y=y_values,
+        mode='lines+markers+text',
+        name='درصد رشد',
+        line=dict(color='#00FF66', width=3),
+        marker=dict(size=10, color='#00FF66', line=dict(width=2, color='white')),
+        text=[f"{v}%" if v is not None else "" for v in y_values],
+        textposition="top center",
+        connectgaps=True
+    ))
+
+    # تنظیمات محورها و تم مشکی نوار قلب
+    fig.update_layout(
+        title="نمودار ضربانی رشد روزانه",
+        xaxis=dict(title="روزهای ماه (۱ تا ۳۰)", tickangle=0),
+        yaxis=dict(title="درصد رشد", range=[0, 105], dtick=20),
+        paper_bgcolor="#0e1117",
+        plot_bgcolor="#050d08",
+        font=dict(color="#00FF66"),
+        height=500,
+        margin=dict(l=20, r=20, t=50, b=50)
+    )
+
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#0f2617')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#0f2617')
+
+    st.plotly_chart(fig, use_container_width=True)
+
     if data:
-        sorted_dates = sorted(data.keys())
-        chart_data = []
-        for idx, d in enumerate(sorted_dates):
-            chart_data.append({
-                "روز": f"روز {idx+1} ({d[-5:]})",
-                "درصد رشد": data[d]["percent"]
-            })
-        
-        df = pd.DataFrame(chart_data)
-        st.line_chart(df.set_index("روز"))
         st.write("📋 **جدول جزئیات ثبت شده:**")
+        df = pd.DataFrame([{"روز": f"روز {i+1} ({d[-5:]})", "درصد رشد": data[d]["percent"]} for i, d in enumerate(sorted_dates)])
         st.dataframe(df, use_container_width=True)
     else:
         st.info("هنوز هیچ داده‌ای ثبت نشده است. از تب اول عملکرد امروز را ثبت کنید.")
