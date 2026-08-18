@@ -854,67 +854,20 @@ def save_journal(
 
 
 # ============================================================
-# SLEEP
+# TABS
 # ============================================================
 
-with tabs[10]:
-
-    st.subheader(
-        "😴 پیگیری خواب"
-    )
-
-    sleep_date = st.date_input(
-        "تاریخ",
-        date.today(),
-        key="sleep_date"
-    )
-
-    sd = str(sleep_date)
-
-    old_sleep = get_sleep(
-        uid,
-        sd
-    ) or {}
-
-    hours = st.number_input(
-        tr("sleep_hours"),
-        0.0,
-        24.0,
-        float(old_sleep.get("hours", 8)),
-        0.5
-    )
-
-    quality = st.slider(
-        "کیفیت خواب",
-        1,
-        5,
-        int(old_sleep.get("quality", 3))
-    )
-
-    if st.button(
-        "💾 ذخیره خواب",
-        key="save_sleep"
-    ):
-
-        save_sleep(
-            uid,
-            sd,
-            hours,
-            quality
-        )
-
-        st.success(
-            tr("success")
-        )
-
-        st.rerun()
-
-    if hours < 6:
-        st.warning(
-            "⚠️ خواب ثبت‌شده کمتر از ۶ ساعت است."
-        )
-
-    elif hours >= 7:
-        st.success(
-            "😴 مقدار خواب مناسب است."
-        )
+tabs = st.tabs([
+    tr("dashboard"),  # tabs[0]
+    tr("today"),      # tabs[1]
+    tr("habits"),     # tabs[2]
+    tr("tasks"),      # tabs[3]
+    tr("goals"),      # tabs[4]
+    tr("calendar"),   # tabs[5]
+    tr("growth"),     # tabs[6]
+    tr("badges"),     # tabs[7]
+    tr("insights"),   # tabs[8]
+    tr("journal"),    # tabs[9]
+    tr("sleep"),      # tabs[10]
+    tr("settings"),   # tabs[11]
+])
