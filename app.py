@@ -42,59 +42,45 @@ DB_FILE = "mygrowth.db"
 
 st.markdown("""
 <style>
-html, body, [class*="css"] {
-    font-family: Arial, sans-serif;
-}
-
-.main {
-    direction: rtl;
+/* Reset and clear overlay bugs */
+.stApp {
+    background-color: #0e1117;
 }
 
 .block-container {
-    padding-top: 1.2rem;
-    max-width: 1500px;
+    padding-top: 2rem !important;
+    max-width: 1400px;
 }
 
-/* Fix Streamlit Tabs layout and visibility */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    flex-wrap: wrap;
+/* Tab styling and fix visibility */
+div[data-baseweb="tab-list"] {
+    gap: 8px !important;
+    flex-wrap: wrap !important;
 }
 
-.stTabs [data-baseweb="tab"] {
-    height: auto;
-    white-space: normal;
-    padding: 8px 16px;
-    border-radius: 8px;
+button[data-baseweb="tab"] {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    color: #ffffff !important;
 }
 
-.stButton > button {
-    width: 100%;
-    border-radius: 10px;
-    font-weight: 600;
+button[data-baseweb="tab"][aria-selected="true"] {
+    background-color: #ff4b4b !important;
+    color: #ffffff !important;
 }
 
-[data-testid="stMetric"] {
-    background: rgba(255,255,255,.045);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 15px;
-    padding: 12px;
-}
-
+/* Card and UI fixes */
 .hero {
-    padding: 28px;
-    border-radius: 20px;
+    padding: 20px;
+    border-radius: 12px;
     margin-bottom: 20px;
-    background:
-        linear-gradient(
-            135deg,
-            rgba(255,75,120,.18),
-            rgba(100,80,255,.10)
-        );
-    border: 1px solid rgba(255,255,255,.08);
+    background: linear-gradient(135deg, rgba(255,75,120,0.2), rgba(100,80,255,0.15));
+    border: 1px solid rgba(255,255,255,0.1);
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
