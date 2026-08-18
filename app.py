@@ -98,6 +98,8 @@ def verify_password(password, stored):
 def init_db():
     con = db()
     cur = con.cursor()
+    
+    # ساخت تمامی جدول‌ها در صورت عدم وجود
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,6 +182,7 @@ def init_db():
     """)
     con.commit()
 
+    # ساخت کاربر پیش‌فرض Admin
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute("SELECT id FROM users WHERE LOWER(username)='rahimi'").fetchone()
     if not admin_exists:
@@ -456,16 +459,30 @@ else:
         records = get_records(uid)
         streak = calculate_streak(records)
         
+        today_score = 0
+        month_score = 0
         last_status, last_color = "ثبت‌نشده", "#6B7280"
+        
         if records:
-            last_record = list(records.values())[0]
-            last_status, last_color = get_status_label(last_record['percent'])
+            # محاسبه عملکرد امروز
+            today_str = str(date.today())
+            if today_str in records:
+                today_score = records[today_str]['percent']
+                last_status, last_color = get_status_label(today_score)
+            else:
+                last_record = list(records.values())[0]
+                today_score = last_record['percent']
+                last_status, last_color = get_status_label(today_score)
+
+            # محاسبه میانگین ۳۰ روز اخیر (ماهانه)
+            recent_30 = [v['percent'] for k, v in list(records.items())[:30]]
+            month_score = round(sum(recent_30) / len(recent_30), 1)
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("کل روزهای ثبت‌شده", f"{len(records)} روز")
-        col2.metric("تداوم فعلی (Streak)", f"🔥 {streak} روز")
-        col3.metric("امتیاز کل XP", f"⭐ {len(records) * 50} XP")
-        col4.metric("آخرین وضعیت", last_status)
+        col1.metric("تداوم فعلی (Streak)", f"🔥 {streak} روز")
+        col2.metric("عملکرد روزانه (امروز)", f"{today_score}%")
+        col3.metric("میانگین ۳۰ روزه (ماهانه)", f"{month_score}%")
+        col4.metric("ارزیابی وضعیت", last_status)
 
     # 2. Today
     elif page == "📅 ثبت امروز":
@@ -475,10 +492,14 @@ else:
         habits = get_habits(uid)
         tot_weight = sum([h[3] for h in habits]) or 1
         
+        # بارگیری مقادیر قبلی ثبت شده در صورت وجود
+        existing_record = get_records(uid).get(d_str, {}).get("details", {})
+        
         details = {}
         total_score = 0
         for h in habits:
-            val = st.slider(f"{h[1]} (وزن: {h[3]}%)", 0, 100, 0, key=f"h_{h[0]}")
+            init_val = existing_record.get(h[1], 0)
+            val = st.slider(f"{h[1]} (وزن: {h[3]}%)", 0, 100, int(init_val), key=f"h_{h[0]}_{d_str}")
             details[h[1]] = val
             total_score += (val * h[3]) / tot_weight
 
@@ -486,12 +507,12 @@ else:
         status, color = get_status_label(avg_score)
         
         c1, c2 = st.columns(2)
-        c1.metric("میانگین عملکرد روزانه", f"{avg_score}%")
+        c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
         c2.metric("ارزیابی وضعیت", status)
         
         if st.button("💾 ذخیره عملکرد"):
             save_record(uid, d_str, avg_score, details)
-            st.success("عملکرد با موفقیت ذخیره شد!")
+            st.success(f"عملکرد تاریخ {d_str} با موفقیت ذخیره شد!")
 
     # 3. Habits
     elif page == "🔁 مدیریت عادت‌ها":
@@ -510,21 +531,25 @@ else:
                 st.success("عادت جدید اضافه شد.")
                 st.rerun()
 
-    # 4. Tasks
+    # 4. Tasks (تاریخ‌وار)
     elif page == "📝 لیست کارها":
-        st.header("📝 کارهای روزانه")
-        t_date = st.date_input("تاریخ کارها", date.today())
+        st.header("📝 کارهای روزمره (تاریخ‌وار)")
+        t_date = st.date_input("انتخاب تاریخ جهت ثبت یا مشاهده کارها", date.today())
         tasks = get_tasks(uid, t_date)
         
-        for t in tasks:
-            chk = st.checkbox(f"{t[1]} ({t[2]})", value=bool(t[3]), key=f"t_{t[0]}")
-            if chk != bool(t[3]):
-                toggle_task(t[0], chk)
-                st.rerun()
+        st.subheader(f"📋 لیست کارهای تاریخ: {t_date}")
+        if tasks:
+            for t in tasks:
+                chk = st.checkbox(f"{t[1]} (اولویت: {t[2]})", value=bool(t[3]), key=f"t_{t[0]}")
+                if chk != bool(t[3]):
+                    toggle_task(t[0], chk)
+                    st.rerun()
+        else:
+            st.info("کاري برای این تاریخ ثبت نشده است.")
                 
-        st.subheader("➕ افزودن کار جدید")
+        st.subheader("➕ افزودن کار جدید برای این تاریخ")
         t_title = st.text_input("عنوان کار")
-        t_prio = st.selectbox("اولویت", ["بالا", "متوسط", "پایین"])
+        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط", "پایین"])
         if st.button("افزودن کار"):
             if t_title:
                 add_task(uid, t_date, t_title, t_prio)
@@ -554,60 +579,9 @@ else:
                 st.success("هدف جدید ساخته شد.")
                 st.rerun()
 
-    # 6. Growth
+    # 6. Growth (نمودار و تحلیل‌های میانگین)
     elif page == "📈 روند رشد":
-        st.header("📈 روند رشد")
+        st.header("📈 روند رشد و تحلیل میانگین‌ها")
         records = get_records(uid)
         if records:
-            data = [{"تاریخ": d, "عملکرد (%)": v['percent'], "وضعیت": get_status_label(v['percent'])[0]} for d, v in records.items()]
-            df = pd.DataFrame(data).sort_values("تاریخ")
-            fig = px.line(df, x="تاریخ", y="عملکرد (%)", hover_data=["وضعیت"], markers=True)
-            st.plotly_chart(fig, use_container_width=True)
-
-    # 7. Achievements
-    elif page == "🏆 دستاوردها":
-        st.header("🏆 دستاوردها و نشان‌ها")
-        records = get_records(uid)
-        streak = calculate_streak(records)
-        st.write(f"**نشان شروع:** {'✅' if len(records) >= 1 else '❌'} ثبت اولین روز")
-        st.write(f"**نشان تداوم (۷ روز):** {'✅' if streak >= 7 else '❌'} ۷ روز تداوم")
-
-    # 8. Smart Analysis
-    elif page == "🧠 تحلیل هوشمند":
-        st.header("🧠 تحلیل هوشمند عملکرد")
-        records = get_records(uid)
-        if records:
-            avg_all = round(sum([v['percent'] for v in records.values()]) / len(records), 1)
-            overall_status, _ = get_status_label(avg_all)
-            st.info(f"میانگین کل شما: **{avg_all}%** (وضعیت کلی: **{overall_status}**)")
-
-    # 9. Journal
-    elif page == "🙂 ژورنال روزانه":
-        st.header("🙂 ژورنال روزانه")
-        j_date = st.date_input("تاریخ یادداشت", date.today())
-        curr_j = get_journal(uid, j_date)
-        
-        mood = st.selectbox("حس و حال امروز", ["😊 عالی", "😐 معمولی", "پُر انرژی 🚀", "😔 خسته"], index=0)
-        default_note = curr_j[1] if curr_j else ""
-        note = st.text_area("یادداشت‌های امروز", value=default_note)
-        if st.button("ذخیره ژورنال"):
-            save_journal(uid, j_date, mood, note)
-            st.success("یادداشت ذخیره شد.")
-
-    # 10. Sleep
-    elif page == "😴 پایش خواب":
-        st.header("😴 پایش خواب")
-        s_date = st.date_input("تاریخ خواب", date.today())
-        curr_s = get_sleep(uid, s_date)
-        
-        hours = st.number_input("ساعات خواب", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5)
-        quality = st.slider("کیفیت خواب (از ۱۰)", 1, 10, curr_s[1] if curr_s else 7)
-        if st.button("ذخیره وضعیت خواب"):
-            save_sleep(uid, s_date, hours, quality)
-            st.success("اطلاعات خواب ذخیره شد.")
-
-    # 11. Settings
-    elif page == "⚙️ تنظیمات":
-        st.header("⚙️ تنظیمات")
-        st.write(f"**نام کاربری:** {user['username']}")
-        st.write(f"**ایمیل:** {user['email']}")
+            data = [{"تاریخ": d, "عملکرد (%)": v['percent'], "وضع
