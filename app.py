@@ -266,7 +266,7 @@ with tabs[6]:
 # ---------------- Tab 8: Settings & Export ----------------
 with tabs[7]:
     st.subheader("تنظیمات و دانلود گزارش‌ها")
-    st.write("📥 **خروجی اکسل داده‌های پیشرفت:**")
+    st.write("📥 **خروجی داده‌های پیشرفت:**")
     
     if records:
         df_export = pd.DataFrame([
@@ -274,16 +274,14 @@ with tabs[7]:
             for k, v in records.items()
         ])
         
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            df_export.to_excel(writer, index=False, sheet_name='MyGrowth')
+        csv_data = df_export.to_csv(index=False, encoding='utf-8-sig')
             
         st.download_button(
-            label="📊 دانلود فایل Excel گزارش",
-            data=buffer.getvalue(),
-            file_name=f"MyGrowth_Report_{date.today()}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            label="📊 دانلود فایل CSV (قابل باز شدن در Excel)",
+            data=csv_data,
+            file_name=f"MyGrowth_Report_{date.today()}.csv",
+            mime="text/csv"
         )
     else:
-        st.info("داده‌ای برای خروجی اکسل وجود ندارد.")
-    
+        st.info("داده‌ای برای خروجی وجود ندارد.")
+        
