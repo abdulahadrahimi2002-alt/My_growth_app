@@ -55,6 +55,19 @@ html, body, [class*="css"] {
     max-width: 1500px;
 }
 
+/* Fix Streamlit Tabs layout and visibility */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.stTabs [data-baseweb="tab"] {
+    height: auto;
+    white-space: normal;
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+
 .stButton > button {
     width: 100%;
     border-radius: 10px;
@@ -80,33 +93,9 @@ html, body, [class*="css"] {
         );
     border: 1px solid rgba(255,255,255,.08);
 }
-
-.card {
-    padding: 18px;
-    border-radius: 16px;
-    background: rgba(255,255,255,.035);
-    border: 1px solid rgba(255,255,255,.07);
-    margin-bottom: 12px;
-}
-
-.badge {
-    padding: 16px;
-    border-radius: 15px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.08);
-    margin: 8px 0;
-}
-
-.muted {
-    color: #9ca3af;
-}
-
-.big-number {
-    font-size: 34px;
-    font-weight: 800;
-}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 # ============================================================
