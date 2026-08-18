@@ -1,5 +1,5 @@
 # ============================================================
-# MyGrowth Pro Max - Sidebar Navigation (Fixed Layout)
+# MyGrowth Pro Max - Table & Chart History Fixed
 # ============================================================
 
 import streamlit as st
@@ -9,6 +9,7 @@ import secrets
 import json
 from datetime import date, datetime, timedelta
 import pandas as pd
+import plotly.express as px
 
 # ============================================================
 # CONFIG & CSS
@@ -41,7 +42,6 @@ html, body, [class*="css"] {
     max-width: 1300px;
 }
 
-/* کارت‌های داشبورد */
 [data-testid="stMetric"] {
     background: #1e2130;
     border: 1px solid #2e344d;
@@ -57,7 +57,6 @@ html, body, [class*="css"] {
     color: white;
 }
 
-/* استایل منوی سمت چپ */
 [data-testid="stSidebar"] {
     direction: rtl;
     background-color: #111827;
@@ -253,7 +252,7 @@ def add_habit(uid, name, category, weight):
 
 def get_records(uid):
     con = db()
-    rows = con.execute("SELECT record_date,percent,details FROM records WHERE user_id=? ORDER BY record_date", (uid,)).fetchall()
+    rows = con.execute("SELECT record_date,percent,details FROM records WHERE user_id=? ORDER BY record_date DESC", (uid,)).fetchall()
     con.close()
     res = {}
     for r in rows:
@@ -365,27 +364,30 @@ else:
         records = get_records(uid)
         col1, col2, col3 = st.columns(3)
         col1.metric("روزهای ثبت‌شده", len(records))
-        col2.metric("تداوم فعلی", "🔥 3 روز")
-        col3.metric("امتیاز XP", "⭐ 150 XP")
+        col2.metric("تداوم فعلی", f"🔥 {len(records)} روز")
+        total_xp = len(records) * 50
+        col3.metric("امتیاز XP", f"⭐ {total_xp} XP")
 
     # 2. Today
     elif page == "📅 ثبت امروز":
         st.header("📅 ثبت امروز")
-        today_str = str(date.today())
+        selected_date = st.date_input("انتخاب تاریخ ثبت", date.today())
+        date_str = str(selected_date)
+        
         habits = get_habits(uid)
         tot_weight = sum([h['weight'] for h in habits]) or 1
         
         details = {}
         total_score = 0
-        st.subheader("ثبت عملکرد عادت‌ها:")
+        st.subheader("ثبت عملکرد عادت‌ها (از ۰ تا ۱۰۰ درصد):")
         for h in habits:
-            val = st.slider(f"{h['name']} (وزن: {h['weight']}%)", 0, 100, 50, key=f"today_{h['id']}")
+            val = st.slider(f"{h['name']} (وزن: {h['weight']}%)", 0, 100, 0, key=f"today_{h['id']}")
             details[h['name']] = val
             total_score += (val * h['weight']) / tot_weight
 
         if st.button("💾 ذخیره اطلاعات"):
-            save_record(uid, today_str, round(total_score, 1), details)
-            st.success("با موفقیت ثبت شد.")
+            save_record(uid, date_str, round(total_score, 1), details)
+            st.success(f"اطلاعات تاریخ {date_str} با موفقیت ثبت شد.")
 
     # 3. Habits
     elif page == "🔁 مدیریت عادت‌ها":
@@ -433,37 +435,70 @@ else:
         if goals:
             st.dataframe(pd.DataFrame(goals)[['id', 'title', 'deadline', 'progress', 'done']], use_container_width=True)
 
-    # 6. Growth
+    # 6. Growth (Detailed Table & Chart)
     elif page == "📈 روند رشد":
-        st.header("📈 روند رشد")
+        st.header("📈 سابقه و روند رشد پیشرفت")
         records = get_records(uid)
         if records:
-            df = pd.DataFrame([{"date": k, "percent": v["percent"]} for k, v in records.items()])
-            st.line_chart(df.set_index("date"))
+            # 1. Table Display
+            st.subheader("📋 جدول کامل تمامی روزهای ثبت‌شده")
+            table_data = []
+            for d, val in records.items():
+                row = {"تاریخ": d, "مجموع پیشرفت (%)": f"{val['percent']}%"}
+                # Add habit breakdown details
+                if isinstance(val['details'], dict):
+                    for h_name, h_val in val['details'].items():
+                        row[h_name] = f"{h_val}%"
+                table_data.append(row)
+            
+            df_table = pd.DataFrame(table_data)
+            st.dataframe(df_table, use_container_width=True)
+            
+            # 2. Line Chart
+            st.subheader("📊 نمودار خطی روند پیشرفت")
+            df_chart = pd.DataFrame([{"تاریخ": k, "پیشرفت (%)": v["percent"]} for k, v in records.items()])
+            df_chart = df_chart.sort_values("تاریخ")
+            
+            fig = px.line(df_chart, x="تاریخ", y="پیشرفت (%)", markers=True, title="نمودار موفقیت روزانه")
+            fig.update_layout(
+                xaxis_title="تاریخ",
+                yaxis_title="درصد (%)",
+                yaxis=dict(range=[0, 105]),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                font=dict(color="white", family="Vazirmatn"),
+                xaxis=dict(type='category')
+            )
+            st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("داده‌ای ثبت نشده است.")
+            st.info("هنوز داده‌ای ثبت نشده است.")
 
     # 7. Badges
     elif page == "🏆 دستاوردها":
         st.header("🏆 دستاوردها")
-        st.success("🥇 اولین قدم: ثبت موفق اولین روز")
+        records = get_records(uid)
+        if len(records) > 0:
+            st.success("🥇 اولین قدم: ثبت موفق اولین روز عملکرد")
+        else:
+            st.info("با ثبت اطلاعات روزانه، دستاوردهای خود را باز کنید.")
 
     # 8. Insights
     elif page == "🧠 تحلیل هوشمند":
         st.header("🧠 تحلیل هوشمند")
-        st.info("روند فعالیت‌های شما بسیار امیدوارکننده است!")
+        st.info("سیستم هوش مصنوعی آماده تحلیل روندهای شماست.")
 
     # 9. Journal
     elif page == "🙂 ژورنال روزانه":
         st.header("🙂 ژورنال روزانه")
-        st.write("بخش ثبت احساسات و یادداشت‌های روزانه")
+        st.write("بخش ثبت یادداشت‌ها و حالت روزانه شما")
 
     # 10. Sleep
     elif page == "😴 پایش خواب":
         st.header("😴 پایش خواب")
-        st.write("بخش پایش ساعات خواب و استراحت")
+        st.write("مدیریت و پایش ساعات استراحت")
 
     # 11. Settings
     elif page == "⚙️ تنظیمات":
         st.header("⚙️ تنظیمات")
-        st.write(f"نام کاربری: {user['username']}")
+        st.write(f"نام کاربری فعال: {user['username']}")
+            
