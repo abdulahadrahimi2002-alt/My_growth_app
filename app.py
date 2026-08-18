@@ -1,5 +1,5 @@
 # ============================================================
-# MyGrowth Pro Max - Table & Chart History Fixed
+# MyGrowth Pro Max - Fully Functional Version
 # ============================================================
 
 import streamlit as st
@@ -159,7 +159,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             journal_date TEXT NOT NULL,
-            mood INTEGER DEFAULT 3,
+            mood TEXT DEFAULT 'معمولی',
             note TEXT DEFAULT '',
             UNIQUE(user_id, journal_date)
         )
@@ -170,7 +170,7 @@ def init_db():
             user_id INTEGER NOT NULL,
             sleep_date TEXT NOT NULL,
             hours REAL DEFAULT 0,
-            quality INTEGER DEFAULT 3,
+            quality TEXT DEFAULT 'خوب',
             UNIQUE(user_id, sleep_date)
         )
     """)
@@ -270,6 +270,16 @@ def save_record(uid, d, percent, details):
     con.commit()
     con.close()
 
+def get_status_label(score):
+    if score < 50:
+        return "ضعیف 🔴", "error"
+    elif score < 70:
+        return "متوسط 🟡", "warning"
+    elif score < 90:
+        return "خوب 🟢", "info"
+    else:
+        return "عالی 🌟", "success"
+
 def get_tasks(uid):
     con = db()
     rows = con.execute("SELECT * FROM tasks WHERE user_id=? ORDER BY task_date DESC, done, id", (uid,)).fetchall()
@@ -368,10 +378,10 @@ else:
         total_xp = len(records) * 50
         col3.metric("امتیاز XP", f"⭐ {total_xp} XP")
 
-    # 2. Today
+    # 2. Today (With Average Calculation & Dynamic Status Evaluation)
     elif page == "📅 ثبت امروز":
-        st.header("📅 ثبت امروز")
-        selected_date = st.date_input("انتخاب تاریخ ثبت", date.today())
+        st.header("📅 ثبت عملکرد روزانه")
+        selected_date = st.date_input("تاریخ ثبت", date.today())
         date_str = str(selected_date)
         
         habits = get_habits(uid)
@@ -379,15 +389,24 @@ else:
         
         details = {}
         total_score = 0
-        st.subheader("ثبت عملکرد عادت‌ها (از ۰ تا ۱۰۰ درصد):")
+        st.subheader("درصد انجام فعالیت‌ها:")
         for h in habits:
             val = st.slider(f"{h['name']} (وزن: {h['weight']}%)", 0, 100, 0, key=f"today_{h['id']}")
             details[h['name']] = val
             total_score += (val * h['weight']) / tot_weight
 
-        if st.button("💾 ذخیره اطلاعات"):
-            save_record(uid, date_str, round(total_score, 1), details)
-            st.success(f"اطلاعات تاریخ {date_str} با موفقیت ثبت شد.")
+        avg_score = round(total_score, 1)
+        status_label, status_type = get_status_label(avg_score)
+        
+        st.markdown("---")
+        st.subheader("📊 خلاصه ارزیابی روز:")
+        col_avg, col_stat = st.columns(2)
+        col_avg.metric("میانگین/فیصدی عمومی روزانه", f"{avg_score}%")
+        col_stat.metric("وضعیت عملکرد", status_label)
+        
+        if st.button("💾 ذخیره اطلاعات امروز"):
+            save_record(uid, date_str, avg_score, details)
+            st.success(f"اطلاعات تاریخ {date_str} با درصد کل {avg_score}% ({status_label}) ثبت شد.")
 
     # 3. Habits
     elif page == "🔁 مدیریت عادت‌ها":
@@ -435,17 +454,16 @@ else:
         if goals:
             st.dataframe(pd.DataFrame(goals)[['id', 'title', 'deadline', 'progress', 'done']], use_container_width=True)
 
-    # 6. Growth (Detailed Table & Chart)
+    # 6. Growth
     elif page == "📈 روند رشد":
         st.header("📈 سابقه و روند رشد پیشرفت")
         records = get_records(uid)
         if records:
-            # 1. Table Display
             st.subheader("📋 جدول کامل تمامی روزهای ثبت‌شده")
             table_data = []
             for d, val in records.items():
-                row = {"تاریخ": d, "مجموع پیشرفت (%)": f"{val['percent']}%"}
-                # Add habit breakdown details
+                lbl, _ = get_status_label(val['percent'])
+                row = {"تاریخ": d, "میانگین روزانه (%)": f"{val['percent']}%", "وضعیت": lbl}
                 if isinstance(val['details'], dict):
                     for h_name, h_val in val['details'].items():
                         row[h_name] = f"{h_val}%"
@@ -454,7 +472,6 @@ else:
             df_table = pd.DataFrame(table_data)
             st.dataframe(df_table, use_container_width=True)
             
-            # 2. Line Chart
             st.subheader("📊 نمودار خطی روند پیشرفت")
             df_chart = pd.DataFrame([{"تاریخ": k, "پیشرفت (%)": v["percent"]} for k, v in records.items()])
             df_chart = df_chart.sort_values("تاریخ")
@@ -479,26 +496,66 @@ else:
         records = get_records(uid)
         if len(records) > 0:
             st.success("🥇 اولین قدم: ثبت موفق اولین روز عملکرد")
+            if any(r['percent'] >= 90 for r in records.values()):
+                st.success("🌟 فوق‌العاده: دستیابی به میانگین بالای ۹۰٪ در یک روز")
         else:
             st.info("با ثبت اطلاعات روزانه، دستاوردهای خود را باز کنید.")
 
-    # 8. Insights
+    # 8. Intelligent Insights (Fully Operational)
     elif page == "🧠 تحلیل هوشمند":
-        st.header("🧠 تحلیل هوشمند")
-        st.info("سیستم هوش مصنوعی آماده تحلیل روندهای شماست.")
+        st.header("🧠 تحلیل هوشمند عملکرد")
+        records = get_records(uid)
+        if records:
+            scores = [v['percent'] for v in records.values()]
+            avg = sum(scores) / len(scores)
+            st.write(f"**میانگین کل عملکرد شما:** {round(avg, 1)}%")
+            if avg >= 80:
+                st.success("عملکرد کلی شما بسیار عالی است! تداوم این روند شما را به اهدافتان می‌رساند.")
+            elif avg >= 50:
+                st.warning("عملکرد متوسطی دارید. تلاش کنید تمرکز بیشتری روی عادت‌های با وزن بالاتر بگذارید.")
+            else:
+                st.error("میزان پیشرفت پایین است. پیشنهاد می‌شود اهداف کوچک‌تری برای شروع انتخاب کنید.")
+        else:
+            st.info("برای دریافت تحلیل هوشمند ابتدا چند روز اطلاعات ثبت کنید.")
 
-    # 9. Journal
+    # 9. Daily Journal (Fully Operational)
     elif page == "🙂 ژورنال روزانه":
         st.header("🙂 ژورنال روزانه")
-        st.write("بخش ثبت یادداشت‌ها و حالت روزانه شما")
+        j_date = st.date_input("تاریخ یادداشت", date.today())
+        j_mood = st.selectbox("حالت روحی امروز", ["عالی 😃", "خوب 🙂", "معمولی 😐", "خسته 😫", "بد ☹️"])
+        j_note = st.text_area("یادداشت روزانه / احساسات امروز")
+        
+        if st.button("💾 ثبت ژورنال"):
+            con = db()
+            con.execute("""
+                INSERT INTO journal (user_id, journal_date, mood, note) VALUES (?,?,?,?)
+                ON CONFLICT(user_id, journal_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
+            """, (uid, str(j_date), j_mood, j_note))
+            con.commit()
+            con.close()
+            st.success("یادداشت روزانه با موفقیت ثبت شد.")
 
-    # 10. Sleep
+    # 10. Sleep Tracker (Fully Operational)
     elif page == "😴 پایش خواب":
-        st.header("😴 پایش خواب")
-        st.write("مدیریت و پایش ساعات استراحت")
+        st.header("😴 پایش خواب و استراحت")
+        s_date = st.date_input("تاریخ خواب", date.today())
+        s_hours = st.number_input("ساعات خواب (ساعت)", 0.0, 24.0, 7.5, step=0.5)
+        s_qual = st.select_slider("کیفیت خواب", options=["خیلی بد ❌", "بد ⚠️", "متوسط 😐", "خوب 🟢", "عالی 🌟"])
+        
+        if st.button("💾 ثبت اطلاعات خواب"):
+            con = db()
+            con.execute("""
+                INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
+                ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
+            """, (uid, str(s_date), s_hours, s_qual))
+            con.commit()
+            con.close()
+            st.success("اطلاعات خواب ذخیره شد.")
 
-    # 11. Settings
+    # 11. Settings (Fully Operational)
     elif page == "⚙️ تنظیمات":
-        st.header("⚙️ تنظیمات")
-        st.write(f"نام کاربری فعال: {user['username']}")
-            
+        st.header("⚙️ تنظیمات حساب کاربری")
+        st.write(f"**نام کاربری:** {user['username']}")
+        st.write(f"**ایمیل:** {user['email']}")
+        st.write(f"**تاریخ ساخت حساب:** {user['created_at'][:10]}")
+        
