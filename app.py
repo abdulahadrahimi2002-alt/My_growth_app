@@ -1,5 +1,5 @@
 # ============================================================
-# MyGrowth Pro Max - Fixed UI & Tabs
+# MyGrowth Pro Max - Sidebar Navigation (Fixed Layout)
 # ============================================================
 
 import streamlit as st
@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 import pandas as pd
 
 # ============================================================
-# CONFIG & ENHANCED CSS
+# CONFIG & CSS
 # ============================================================
 
 st.set_page_config(
@@ -23,7 +23,6 @@ st.set_page_config(
 
 DB_FILE = "mygrowth.db"
 
-# CSS اختصاصی برای اصلاح کامل تب‌ها و کادرها
 st.markdown("""
 <style>
 @import url('https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css');
@@ -39,43 +38,7 @@ html, body, [class*="css"] {
 
 .block-container {
     padding-top: 1.5rem;
-    max-width: 1400px;
-}
-
-/* اصلاح استایل تب‌ها (Tabs) */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background-color: #1e2130;
-    padding: 8px;
-    border-radius: 12px;
-    border: 1px solid #2e344d;
-    overflow-x: auto;
-    white-space: nowrap;
-}
-
-.stTabs [data-baseweb="tab"] {
-    height: 45px;
-    background-color: #262c40;
-    border-radius: 8px;
-    color: #e0e6ed !important;
-    font-weight: 600;
-    font-size: 14px;
-    padding: 0px 16px;
-    border: 1px solid transparent;
-    transition: all 0.2s ease-in-out;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    background-color: #323a54;
-    color: #ffffff !important;
-    border-color: #4a5578;
-}
-
-.stTabs [aria-selected="true"] {
-    background-color: #4f46e5 !important;
-    color: #ffffff !important;
-    border-color: #6366f1 !important;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    max-width: 1300px;
 }
 
 /* کارت‌های داشبورد */
@@ -93,55 +56,34 @@ html, body, [class*="css"] {
     background-color: #4f46e5;
     color: white;
 }
-</style>
-""", unsafe_allow_html=True)
 
-# ============================================================
-# TRANSLATION
-# ============================================================
-
-TEXT = {
-    "dari": {
-        "title": "MyGrowth Pro Max",
-        "login": "ورود",
-        "register": "ثبت‌نام",
-        "username": "نام کاربری",
-        "email": "ایمیل",
-        "password": "رمز عبور",
-        "login_btn": "ورود به حساب",
-        "register_btn": "ساخت حساب",
-        "logout": "خروج",
-        "dashboard": "🏠 داشبورد",
-        "today": "📅 ثبت امروز",
-        "habits": "🔁 مدیریت عادت‌ها",
-        "tasks": "📝 لیست کارها",
-        "goals": "🎯 اهداف",
-        "growth": "📈 روند رشد",
-        "badges": "🏆 دستاوردها",
-        "insights": "🧠 تحلیل هوشمند",
-        "journal": "🙂 ژورنال روزانه",
-        "sleep": "😴 پایش خواب",
-        "settings": "⚙️ تنظیمات",
-        "save": "💾 ذخیره اطلاعات",
-        "add": "افزودن",
-        "weight": "وزن (%)",
-        "priority": "اولویت",
-        "deadline": "مهلت انجام",
-        "records": "روزهای ثبت‌شده",
-        "streak": "تداوم فعلی",
-        "xp": "امتیاز XP",
-        "new_habit": "عادت جدید",
-        "habit_name": "نام عادت",
-        "new_task": "کار جدید",
-        "goal_title": "عنوان هدف",
-        "mood": "حالت روحی امروز",
-        "sleep_hours": "ساعات خواب",
-        "success": "با موفقیت انجام شد.",
-    }
+/* استایل منوی سمت چپ */
+[data-testid="stSidebar"] {
+    direction: rtl;
+    background-color: #111827;
 }
 
-def tr(key):
-    return TEXT["dari"].get(key, key)
+div[role="radiogroup"] > label {
+    background-color: #1f2937;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 6px;
+    border: 1px solid #374151;
+    color: #f3f4f6 !important;
+    transition: all 0.2s;
+}
+
+div[role="radiogroup"] > label:hover {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+div[role="radiogroup"] [aria-checked="true"] {
+    background-color: #4f46e5 !important;
+    border-color: #6366f1 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ============================================================
 # DATABASE & INIT
@@ -370,11 +312,11 @@ if "user" not in st.session_state:
 
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
-    tab_login, tab_reg = st.tabs([tr("login"), tr("register")])
+    tab_login, tab_reg = st.tabs(["ورود", "ثبت‌نام"])
     with tab_login:
-        u = st.text_input(tr("username"), key="l_u")
-        p = st.text_input(tr("password"), type="password", key="l_p")
-        if st.button(tr("login_btn")):
+        u = st.text_input("نام کاربری", key="l_u")
+        p = st.text_input("رمز عبور", type="password", key="l_p")
+        if st.button("ورود به حساب"):
             usr = authenticate(u, p)
             if usr:
                 st.session_state.user = usr
@@ -382,10 +324,10 @@ if not st.session_state.user:
             else:
                 st.error("نام کاربری یا رمز عبور اشتباه است.")
     with tab_reg:
-        ru = st.text_input(tr("username"), key="r_u")
-        re = st.text_input(tr("email"), key="r_e")
-        rp = st.text_input(tr("password"), type="password", key="r_p")
-        if st.button(tr("register_btn")):
+        ru = st.text_input("نام کاربری", key="r_u")
+        re = st.text_input("ایمیل", key="r_e")
+        rp = st.text_input("رمز عبور", type="password", key="r_p")
+        if st.button("ساخت حساب"):
             if create_user(ru, re, rp):
                 st.success("حساب ساخته شد. اکنون وارد شوید.")
             else:
@@ -394,31 +336,41 @@ else:
     user = st.session_state.user
     uid = user["id"]
     
-    st.sidebar.title(f"👤 {user['username']}")
-    if st.sidebar.button(tr("logout")):
+    st.sidebar.markdown(f"### 👤 {user['username']}")
+    
+    menu = [
+        "🏠 داشبورد",
+        "📅 ثبت امروز",
+        "🔁 مدیریت عادت‌ها",
+        "📝 لیست کارها",
+        "🎯 اهداف",
+        "📈 روند رشد",
+        "🏆 دستاوردها",
+        "🧠 تحلیل هوشمند",
+        "🙂 ژورنال روزانه",
+        "😴 پایش خواب",
+        "⚙️ تنظیمات"
+    ]
+    
+    page = st.sidebar.radio("منوی اصلی", menu, label_visibility="collapsed")
+    
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🚪 خروج از حساب"):
         st.session_state.user = None
         st.rerun()
 
-    menu = [
-        tr("dashboard"), tr("today"), tr("habits"), tr("tasks"),
-        tr("goals"), tr("growth"), tr("badges"), tr("insights"),
-        tr("journal"), tr("sleep"), tr("settings")
-    ]
-    
-    tabs = st.tabs(menu)
-
     # 1. Dashboard
-    with tabs[0]:
-        st.header(tr("dashboard"))
+    if page == "🏠 داشبورد":
+        st.header("🏠 داشبورد")
         records = get_records(uid)
         col1, col2, col3 = st.columns(3)
-        col1.metric(tr("records"), len(records))
-        col2.metric(tr("streak"), "🔥 3 روز")
-        col3.metric(tr("xp"), "⭐ 150 XP")
+        col1.metric("روزهای ثبت‌شده", len(records))
+        col2.metric("تداوم فعلی", "🔥 3 روز")
+        col3.metric("امتیاز XP", "⭐ 150 XP")
 
     # 2. Today
-    with tabs[1]:
-        st.header(tr("today"))
+    elif page == "📅 ثبت امروز":
+        st.header("📅 ثبت امروز")
         today_str = str(date.today())
         habits = get_habits(uid)
         tot_weight = sum([h['weight'] for h in habits]) or 1
@@ -431,32 +383,32 @@ else:
             details[h['name']] = val
             total_score += (val * h['weight']) / tot_weight
 
-        if st.button(tr("save")):
+        if st.button("💾 ذخیره اطلاعات"):
             save_record(uid, today_str, round(total_score, 1), details)
-            st.success(tr("success"))
+            st.success("با موفقیت ثبت شد.")
 
     # 3. Habits
-    with tabs[2]:
-        st.header(tr("habits"))
+    elif page == "🔁 مدیریت عادت‌ها":
+        st.header("🔁 مدیریت عادت‌ها")
         habits = get_habits(uid)
         if habits:
             st.dataframe(pd.DataFrame(habits)[['id', 'name', 'category', 'weight']], use_container_width=True)
         
-        st.subheader(tr("new_habit"))
-        h_name = st.text_input(tr("habit_name"))
+        st.subheader("عادت جدید")
+        h_name = st.text_input("نام عادت")
         h_cat = st.selectbox("دسته‌بندی", ["Learning", "Health", "Skill", "Spiritual"])
-        h_weight = st.number_input(tr("weight"), 1, 100, 10)
-        if st.button(tr("add")):
+        h_weight = st.number_input("وزن (%)", 1, 100, 10)
+        if st.button("افزودن"):
             if add_habit(uid, h_name, h_cat, h_weight):
-                st.success(tr("success"))
+                st.success("اضافه شد.")
                 st.rerun()
 
     # 4. Tasks
-    with tabs[3]:
-        st.header(tr("tasks"))
-        t_title = st.text_input(tr("new_task"))
-        t_prio = st.selectbox(tr("priority"), ["مهم و فوری", "مهم", "عادی"])
-        if st.button(tr("add") + " کار"):
+    elif page == "📝 لیست کارها":
+        st.header("📝 لیست کارها")
+        t_title = st.text_input("کار جدید")
+        t_prio = st.selectbox("اولویت", ["مهم و فوری", "مهم", "عادی"])
+        if st.button("افزودن کار"):
             add_task(uid, str(date.today()), t_title, t_prio)
             st.rerun()
             
@@ -469,11 +421,11 @@ else:
                 st.rerun()
 
     # 5. Goals
-    with tabs[4]:
-        st.header(tr("goals"))
-        g_title = st.text_input(tr("goal_title"))
-        g_dl = st.date_input(tr("deadline"), date.today() + timedelta(days=30))
-        if st.button(tr("add") + " هدف"):
+    elif page == "🎯 اهداف":
+        st.header("🎯 اهداف")
+        g_title = st.text_input("عنوان هدف")
+        g_dl = st.date_input("مهلت انجام", date.today() + timedelta(days=30))
+        if st.button("افزودن هدف"):
             add_goal(uid, g_title, "", str(date.today()), str(g_dl), "normal")
             st.rerun()
             
@@ -482,8 +434,8 @@ else:
             st.dataframe(pd.DataFrame(goals)[['id', 'title', 'deadline', 'progress', 'done']], use_container_width=True)
 
     # 6. Growth
-    with tabs[5]:
-        st.header(tr("growth"))
+    elif page == "📈 روند رشد":
+        st.header("📈 روند رشد")
         records = get_records(uid)
         if records:
             df = pd.DataFrame([{"date": k, "percent": v["percent"]} for k, v in records.items()])
@@ -492,27 +444,26 @@ else:
             st.info("داده‌ای ثبت نشده است.")
 
     # 7. Badges
-    with tabs[6]:
-        st.header(tr("badges"))
+    elif page == "🏆 دستاوردها":
+        st.header("🏆 دستاوردها")
         st.success("🥇 اولین قدم: ثبت موفق اولین روز")
 
     # 8. Insights
-    with tabs[7]:
-        st.header(tr("insights"))
+    elif page == "🧠 تحلیل هوشمند":
+        st.header("🧠 تحلیل هوشمند")
         st.info("روند فعالیت‌های شما بسیار امیدوارکننده است!")
 
     # 9. Journal
-    with tabs[8]:
-        st.header(tr("journal"))
-        st.write("ثبت احساسات و یادداشت‌های روزانه")
+    elif page == "🙂 ژورنال روزانه":
+        st.header("🙂 ژورنال روزانه")
+        st.write("بخش ثبت احساسات و یادداشت‌های روزانه")
 
     # 10. Sleep
-    with tabs[9]:
-        st.header(tr("sleep"))
-        st.write("پایش ساعات خواب و استراحت")
+    elif page == "😴 پایش خواب":
+        st.header("😴 پایش خواب")
+        st.write("بخش پایش ساعات خواب و استراحت")
 
     # 11. Settings
-    with tabs[10]:
-        st.header(tr("settings"))
+    elif page == "⚙️ تنظیمات":
+        st.header("⚙️ تنظیمات")
         st.write(f"نام کاربری: {user['username']}")
-    
