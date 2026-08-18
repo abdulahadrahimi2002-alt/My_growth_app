@@ -1,10 +1,11 @@
-import streamlit as st
+import hashlib
 import json
 import os
-import hashlib
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+
 import pandas as pd
 import plotly.graph_objects as go
+import streamlit as st
 
 # ============================================================
 # MyGrowth Pro
@@ -19,7 +20,8 @@ st.set_page_config(
 )
 
 # ---------------- CSS ----------------
-st.markdown("""
+st.markdown(
+    """
 <style>
 .main {
     direction: rtl;
@@ -41,7 +43,9 @@ st.markdown("""
     padding-top: 2rem;
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
 # ============================================================
@@ -114,6 +118,7 @@ TEXT = {
 # Utility Functions
 # ============================================================
 
+
 def tr(key):
     lang = st.session_state.get("lang", "Dari")
     return TEXT.get(lang, TEXT["Dari"]).get(key, key)
@@ -147,36 +152,22 @@ def load_json(path, default):
 
 def save_json(path, data):
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(
-            data,
-            f,
-            ensure_ascii=False,
-            indent=2
-        )
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def load_user(username, filename, default):
-    return load_json(
-        user_file(username, filename),
-        default
-    )
+    return load_json(user_file(username, filename), default)
 
 
 def save_user(username, filename, data):
-    save_json(
-        user_file(username, filename),
-        data
-    )
+    save_json(user_file(username, filename), data)
 
 
 def calculate_streak(records):
     if not records:
         return 0
 
-    available_dates = {
-        date.fromisoformat(x)
-        for x in records.keys()
-    }
+    available_dates = {date.fromisoformat(x) for x in records.keys()}
 
     check = date.today()
 
@@ -222,9 +213,7 @@ def get_badges(records):
         badges.append("👑 ۳۰ روز تداوم")
 
     perfect_days = sum(
-        1
-        for record in records.values()
-        if record.get("percent", 0) >= 100
+        1 for record in records.values() if record.get("percent", 0) >= 100
     )
 
     if perfect_days >= 1:
@@ -257,31 +246,18 @@ if "lang" not in st.session_state:
 # Language
 # ============================================================
 
-language = st.sidebar.radio(
-    "🌐 Language / زبان",
-    ["🇦🇫 دری", "🇬🇧 English"]
-)
+language = st.sidebar.radio("🌐 Language / زبان", ["🇦🇫 دری", "🇬🇧 English"])
 
-st.session_state.lang = (
-    "Dari"
-    if "دری" in language
-    else "English"
-)
+st.session_state.lang = "Dari" if "دری" in language else "English"
 
 
 # ============================================================
 # Users Database
 # ============================================================
 
-users_file = os.path.join(
-    USER_DIR,
-    "users.json"
-)
+users_file = os.path.join(USER_DIR, "users.json")
 
-users = load_json(
-    users_file,
-    {}
-)
+users = load_json(users_file, {})
 
 
 # ============================================================
@@ -299,114 +275,64 @@ if not st.session_state.authenticated:
             <div style="font-size:60px;">🚀</div>
         </div>
         """,
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
 
     st.title(tr("title"))
     st.caption(tr("subtitle"))
 
     auth_mode = st.radio(
-        "Choose / انتخاب",
-        [tr("login"), tr("register")],
-        horizontal=True
+        "Choose / انتخاب", [tr("login"), tr("register")], horizontal=True
     )
 
-    username = st.text_input(
-        tr("username")
-    )
+    username = st.text_input(tr("username"))
 
-    password = st.text_input(
-        tr("password"),
-        type="password"
-    )
+    password = st.text_input(tr("password"), type="password")
 
     if auth_mode == tr("register"):
 
-        confirm = st.text_input(
-            tr("confirm"),
-            type="password"
-        )
+        confirm = st.text_input(tr("confirm"), type="password")
 
-        if st.button(
-            tr("register"),
-            type="primary"
-        ):
+        if st.button(tr("register"), type="primary"):
 
             if not username.strip():
                 st.warning("نام کاربری را وارد کنید.")
 
             elif len(password) < 6:
-                st.warning(
-                    "رمز عبور باید حداقل ۶ کاراکتر باشد."
-                )
+                st.warning("رمز عبور باید حداقل ۶ کاراکتر باشد.")
 
             elif password != confirm:
-                st.warning(
-                    "رمزهای عبور یکسان نیستند."
-                )
+                st.warning("رمزهای عبور یکسان نیستند.")
 
             elif username in users:
-                st.error(
-                    "این نام کاربری قبلاً وجود دارد."
-                )
+                st.error("این نام کاربری قبلاً وجود دارد.")
 
             else:
 
-                users[username] = hash_password(
-                    password
-                )
+                users[username] = hash_password(password)
 
-                save_json(
-                    users_file,
-                    users
-                )
+                save_json(users_file, users)
 
                 # Create default user data
-                save_user(
-                    username,
-                    "habits.json",
-                    DEFAULT_HABITS
-                )
+                save_user(username, "habits.json", DEFAULT_HABITS)
 
-                save_user(
-                    username,
-                    "records.json",
-                    {}
-                )
+                save_user(username, "records.json", {})
 
-                save_user(
-                    username,
-                    "tasks.json",
-                    []
-                )
+                save_user(username, "tasks.json", [])
 
-                save_user(
-                    username,
-                    "goals.json",
-                    []
-                )
+                save_user(username, "goals.json", [])
 
-                save_user(
-                    username,
-                    "journal.json",
-                    {}
-                )
+                save_user(username, "journal.json", {})
 
-                st.success(
-                    "ثبت‌نام موفق شد. اکنون وارد شوید."
-                )
+                st.success("ثبت‌نام موفق شد. اکنون وارد شوید.")
 
     else:
 
-        if st.button(
-            tr("login"),
-            type="primary"
-        ):
+        if st.button(tr("login"), type="primary"):
 
             if (
                 username in users
-                and users[username]
-                == hash_password(password)
+                and users[username] == hash_password(password)
             ):
 
                 st.session_state.authenticated = True
@@ -416,9 +342,7 @@ if not st.session_state.authenticated:
 
             else:
 
-                st.error(
-                    "نام کاربری یا رمز عبور اشتباه است."
-                )
+                st.error("نام کاربری یا رمز عبور اشتباه است.")
 
     st.stop()
 
@@ -429,35 +353,15 @@ if not st.session_state.authenticated:
 
 user = st.session_state.username
 
-habits = load_user(
-    user,
-    "habits.json",
-    DEFAULT_HABITS.copy()
-)
+habits = load_user(user, "habits.json", DEFAULT_HABITS.copy())
 
-records = load_user(
-    user,
-    "records.json",
-    {}
-)
+records = load_user(user, "records.json", {})
 
-tasks = load_user(
-    user,
-    "tasks.json",
-    []
-)
+tasks = load_user(user, "tasks.json", [])
 
-goals = load_user(
-    user,
-    "goals.json",
-    []
-)
+goals = load_user(user, "goals.json", [])
 
-journal = load_user(
-    user,
-    "journal.json",
-    {}
-)
+journal = load_user(user, "journal.json", {})
 
 
 # ============================================================
@@ -465,13 +369,9 @@ journal = load_user(
 # ============================================================
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(
-    f"### 👤 {user}"
-)
+st.sidebar.markdown(f"### 👤 {user}")
 
-if st.sidebar.button(
-    tr("logout")
-):
+if st.sidebar.button(tr("logout")):
 
     st.session_state.authenticated = False
     st.session_state.username = ""
@@ -491,19 +391,21 @@ st.caption(tr("subtitle"))
 # Navigation
 # ============================================================
 
-tabs = st.tabs([
-    tr("dashboard"),
-    tr("today"),
-    tr("habits"),
-    tr("tasks"),
-    tr("goals"),
-    tr("calendar"),
-    tr("charts"),
-    tr("badges"),
-    tr("insights"),
-    tr("journal"),
-    tr("settings"),
-])
+tabs = st.tabs(
+    [
+        tr("dashboard"),
+        tr("today"),
+        tr("habits"),
+        tr("tasks"),
+        tr("goals"),
+        tr("calendar"),
+        tr("charts"),
+        tr("badges"),
+        tr("insights"),
+        tr("journal"),
+        tr("settings"),
+    ]
+)
 
 
 today = str(date.today())
@@ -520,44 +422,22 @@ with tabs[0]:
     streak = calculate_streak(records)
 
     average = (
-        sum(
-            r.get("percent", 0)
-            for r in records.values()
-        )
-        / len(records)
+        sum(r.get("percent", 0) for r in records.values()) / len(records)
         if records
         else 0
     )
 
-    best = max(
-        [
-            r.get("percent", 0)
-            for r in records.values()
-        ],
-        default=0
-    )
+    best = max([r.get("percent", 0) for r in records.values()], default=0)
 
     c1, c2, c3, c4 = st.columns(4)
 
-    c1.metric(
-        "📅 روزهای ثبت",
-        len(records)
-    )
+    c1.metric("📅 روزهای ثبت", len(records))
 
-    c2.metric(
-        "📊 میانگین",
-        f"{average:.1f}%"
-    )
+    c2.metric("📊 میانگین", f"{average:.1f}%")
 
-    c3.metric(
-        "🔥 Streak",
-        f"{streak} روز"
-    )
+    c3.metric("🔥 Streak", f"{streak} روز")
 
-    c4.metric(
-        "🏆 بهترین",
-        f"{best:.0f}%"
-    )
+    c4.metric("🏆 بهترین", f"{best:.0f}%")
 
     st.markdown("---")
 
@@ -565,16 +445,11 @@ with tabs[0]:
 
         current = records[today]["percent"]
 
-        st.success(
-            f"عملکرد امروز: **{current}%** — "
-            f"{get_status(current)}"
-        )
+        st.success(f"عملکرد امروز: **{current}%** — " f"{get_status(current)}")
 
     else:
 
-        st.info(
-            "امروز هنوز عملکرد خود را ثبت نکرده‌اید."
-        )
+        st.info("امروز هنوز عملکرد خود را ثبت نکرده‌اید.")
 
     if records:
 
@@ -582,10 +457,7 @@ with tabs[0]:
 
         recent = keys[-14:]
 
-        values = [
-            records[k]["percent"]
-            for k in recent
-        ]
+        values = [records[k]["percent"] for k in recent]
 
         fig = go.Figure()
 
@@ -595,25 +467,15 @@ with tabs[0]:
                 y=values,
                 mode="lines+markers",
                 line=dict(width=3),
-                marker=dict(size=8)
+                marker=dict(size=8),
             )
         )
 
-        fig.add_hline(
-            y=75,
-            line_dash="dash",
-            annotation_text="هدف 75%"
-        )
+        fig.add_hline(y=75, line_dash="dash", annotation_text="هدف 75%")
 
-        fig.update_layout(
-            yaxis=dict(range=[0, 105]),
-            height=350
-        )
+        fig.update_layout(yaxis=dict(range=[0, 105]), height=350)
 
-        st.plotly_chart(
-            fig,
-            use_container_width=True
-        )
+        st.plotly_chart(fig, use_container_width=True)
 
 
 # ============================================================
@@ -624,29 +486,17 @@ with tabs[1]:
 
     st.subheader(tr("today"))
 
-    st.write(
-        f"📅 **تاریخ:** {today}"
-    )
+    st.write(f"📅 **تاریخ:** {today}")
 
     if not habits:
 
-        st.warning(
-            "هنوز هیچ عادتی ندارید."
-        )
+        st.warning("هنوز هیچ عادتی ندارید.")
 
     else:
 
-        old_details = records.get(
-            today,
-            {}
-        ).get(
-            "details",
-            {}
-        )
+        old_details = records.get(today, {}).get("details", {})
 
-        total_weight = sum(
-            habits.values()
-        )
+        total_weight = sum(habits.values())
 
         earned = 0
         scores = {}
@@ -657,69 +507,34 @@ with tabs[1]:
                 f"{habit} — وزن {weight}٪",
                 0,
                 100,
-                int(
-                    old_details.get(
-                        habit,
-                        0
-                    )
-                ),
+                int(old_details.get(habit, 0)),
                 5,
-                key=f"daily_{habit}"
+                key=f"daily_{habit}",
             )
 
             scores[habit] = value
 
-            earned += (
-                value / 100
-            ) * weight
+            earned += (value / 100) * weight
 
-            st.caption(
-                f"امتیاز این عادت: "
-                f"{(value / 100) * weight:.1f}٪"
-            )
+            st.caption(f"امتیاز این عادت: " f"{(value / 100) * weight:.1f}٪")
 
         final_percent = (
-            round(
-                earned
-                / total_weight
-                * 100
-            )
-            if total_weight
-            else 0
+            round(earned / total_weight * 100) if total_weight else 0
         )
 
-        st.progress(
-            final_percent / 100
-        )
+        st.progress(final_percent / 100)
 
-        st.subheader(
-            f"💗 عملکرد امروز: **{final_percent}%**"
-        )
+        st.subheader(f"💗 عملکرد امروز: **{final_percent}%**")
 
-        st.write(
-            get_status(final_percent)
-        )
+        st.write(get_status(final_percent))
 
-        if st.button(
-            tr("save"),
-            type="primary",
-            key="save_daily"
-        ):
+        if st.button(tr("save"), type="primary", key="save_daily"):
 
-            records[today] = {
-                "percent": final_percent,
-                "details": scores
-            }
+            records[today] = {"percent": final_percent, "details": scores}
 
-            save_user(
-                user,
-                "records.json",
-                records
-            )
+            save_user(user, "records.json", records)
 
-            st.success(
-                "عملکرد امروز ذخیره شد."
-            )
+            st.success("عملکرد امروز ذخیره شد.")
 
             st.rerun()
 
@@ -736,84 +551,47 @@ with tabs[2]:
 
     with c1:
 
-        new_habit = st.text_input(
-            "نام عادت جدید"
-        )
+        new_habit = st.text_input("نام عادت جدید")
 
     with c2:
 
         new_weight = st.number_input(
-            "وزن عادت",
-            min_value=1,
-            max_value=100,
-            value=10,
-            step=5
+            "وزن عادت", min_value=1, max_value=100, value=10, step=5
         )
 
-    if st.button(
-        "➕ افزودن عادت"
-    ):
+    if st.button("➕ افزودن عادت"):
 
-        if (
-            new_habit.strip()
-            and new_habit not in habits
-        ):
+        if new_habit.strip() and new_habit not in habits:
 
             habits[new_habit] = new_weight
 
-            save_user(
-                user,
-                "habits.json",
-                habits
-            )
+            save_user(user, "habits.json", habits)
 
             st.rerun()
 
-    total = sum(
-        habits.values()
-    )
+    total = sum(habits.values())
 
     if total == 100:
 
-        st.success(
-            "مجموع وزن‌ها دقیقاً ۱۰۰٪ است."
-        )
+        st.success("مجموع وزن‌ها دقیقاً ۱۰۰٪ است.")
 
     else:
 
-        st.warning(
-            f"مجموع وزن‌ها: {total}% — "
-            f"بهتر است ۱۰۰٪ باشد."
-        )
+        st.warning(f"مجموع وزن‌ها: {total}% — " f"بهتر است ۱۰۰٪ باشد.")
 
-    for habit, weight in list(
-        habits.items()
-    ):
+    for habit, weight in list(habits.items()):
 
-        c1, c2, c3 = st.columns(
-            [4, 2, 1]
-        )
+        c1, c2, c3 = st.columns([4, 2, 1])
 
-        c1.write(
-            f"**{habit}**"
-        )
+        c1.write(f"**{habit}**")
 
-        c2.write(
-            f"{weight}%"
-        )
+        c2.write(f"{weight}%")
 
-        if c3.button(
-            "🗑️",
-            key=f"delete_{habit}"
-        ):
+        if c3.button("🗑️", key=f"delete_{habit}"):
 
             del habits[habit]
 
-            save_user(
-                user,
-                "habits.json",
-                habits
-            )
+            save_user(user, "habits.json", habits)
 
             st.rerun()
 
@@ -826,22 +604,13 @@ with tabs[3]:
 
     st.subheader(tr("tasks"))
 
-    task_title = st.text_input(
-        "کار جدید"
-    )
+    task_title = st.text_input("کار جدید")
 
     priority = st.selectbox(
-        "اولویت",
-        [
-            "🔴 مهم و فوری",
-            "🟡 مهم",
-            "🔵 عادی"
-        ]
+        "اولویت", ["🔴 مهم و فوری", "🟡 مهم", "🔵 عادی"]
     )
 
-    if st.button(
-        "➕ افزودن کار"
-    ):
+    if st.button("➕ افزودن کار"):
 
         if task_title.strip():
 
@@ -851,23 +620,15 @@ with tabs[3]:
                     "text": task_title,
                     "priority": priority,
                     "done": False,
-                    "date": today
+                    "date": today,
                 }
             )
 
-            save_user(
-                user,
-                "tasks.json",
-                tasks
-            )
+            save_user(user, "tasks.json", tasks)
 
             st.rerun()
 
-    today_tasks = [
-        t
-        for t in tasks
-        if t.get("date") == today
-    ]
+    today_tasks = [t for t in tasks if t.get("date") == today]
 
     done_count = 0
 
@@ -876,30 +637,20 @@ with tabs[3]:
         checked = st.checkbox(
             f"{task['priority']} — {task['text']}",
             value=task.get("done", False),
-            key=f"task_{task['id']}"
+            key=f"task_{task['id']}",
         )
 
         if checked:
 
             done_count += 1
 
-        if checked != task.get(
-            "done",
-            False
-        ):
+        if checked != task.get("done", False):
 
             task["done"] = checked
 
-            save_user(
-                user,
-                "tasks.json",
-                tasks
-            )
+            save_user(user, "tasks.json", tasks)
 
-    st.metric(
-        "کارهای انجام‌شده",
-        f"{done_count}/{len(today_tasks)}"
-    )
+    st.metric("کارهای انجام‌شده", f"{done_count}/{len(today_tasks)}")
 
 
 # ============================================================
@@ -910,91 +661,55 @@ with tabs[4]:
 
     st.subheader(tr("goals"))
 
-    goal_title = st.text_input(
-        "عنوان هدف"
-    )
+    goal_title = st.text_input("عنوان هدف")
 
-    deadline = st.date_input(
-        "مهلت هدف"
-    )
+    deadline = st.date_input("مهلت هدف")
 
-    if st.button(
-        "🎯 افزودن هدف"
-    ):
+    if st.button("🎯 افزودن هدف"):
 
         if goal_title.strip():
 
             goals.append(
                 {
+                    "id": datetime.now().timestamp(),
                     "title": goal_title,
                     "deadline": str(deadline),
                     "progress": 0,
-                    "created": today
+                    "created": today,
                 }
             )
 
-            save_user(
-                user,
-                "goals.json",
-                goals
-            )
+            save_user(user, "goals.json", goals)
 
             st.rerun()
 
-    for index, goal in enumerate(
-        goals
-    ):
+    for index, goal in enumerate(list(goals)):
 
-        st.markdown(
-            f"### 🎯 {goal['title']}"
-        )
+        st.markdown(f"### 🎯 {goal['title']}")
 
-        st.write(
-            f"مهلت: {goal['deadline']}"
-        )
+        st.write(f"مهلت: {goal['deadline']}")
 
         progress = st.slider(
             "پیشرفت",
             0,
             100,
-            int(
-                goal.get(
-                    "progress",
-                    0
-                )
-            ),
-            key=f"goal_{index}"
+            int(goal.get("progress", 0)),
+            key=f"goal_{goal.get('id', index)}",
         )
 
-        st.progress(
-            progress / 100
-        )
+        st.progress(progress / 100)
 
-        if progress != goal.get(
-            "progress",
-            0
-        ):
+        if progress != goal.get("progress", 0):
 
             goal["progress"] = progress
 
-            save_user(
-                user,
-                "goals.json",
-                goals
-            )
+            save_user(user, "goals.json", goals)
 
-        if st.button(
-            "🗑️ حذف هدف",
-            key=f"delete_goal_{index}"
-        ):
+        if st.button("🗑️ حذف هدف", key=f"delete_goal_{goal.get('id', index)}"):
 
-            goals.pop(index)
+            goals.remove(goal)
 
-            save_user(
-                user,
-                "goals.json",
-                goals
-            )
+            save_user(user, "goals.json", goals)
 
             st.rerun()
 
@@ -1009,13 +724,154 @@ with tabs[5]:
 
     if not records:
 
-        st.info(
-            "هنوز هیچ روزی ثبت نشده است."
-        )
+        st.info("هنوز هیچ روزی ثبت نشده است.")
 
     else:
 
         rows = []
 
-        for day, record in sorted(
-            records.items
+        for day, record in sorted(records.items(), reverse=True):
+
+            rows.append(
+                {
+                    "تاریخ": day,
+                    "عملکرد": record.get("percent", 0),
+                    "وضعیت": get_status(record.get("percent", 0)),
+                }
+            )
+
+        st.dataframe(
+            pd.DataFrame(rows), use_container_width=True, hide_index=True
+        )
+
+
+# ============================================================
+# Charts
+# ============================================================
+
+with tabs[6]:
+
+    st.subheader(tr("charts"))
+
+    if records:
+
+        keys = sorted(records)
+
+        period = st.selectbox("بازه زمانی", ["7 روز", "30 روز", "90 روز", "همه"])
+
+        if period == "همه":
+
+            selected = keys
+
+        else:
+
+            number = int(period.split()[0])
+
+            selected = keys[-number:]
+
+        values = [records[k]["percent"] for k in selected]
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Scatter(
+                x=selected,
+                y=values,
+                mode="lines+markers+text",
+                text=[f"{x}%" for x in values],
+                textposition="top center",
+                line=dict(width=3),
+                marker=dict(size=8),
+            )
+        )
+
+        fig.add_hline(y=75, line_dash="dash", annotation_text="هدف 75%")
+
+        fig.update_layout(yaxis=dict(range=[0, 105]), height=450)
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        history = []
+
+        for i, key in enumerate(keys):
+
+            current = records[key]["percent"]
+
+            if i == 0:
+
+                change = "—"
+
+            else:
+
+                previous = records[keys[i - 1]]["percent"]
+
+                change = f"{current - previous:+g}%"
+
+            history.append(
+                {
+                    "تاریخ": key,
+                    "عملکرد": f"{current}%",
+                    "تغییر": change,
+                    "وضعیت": get_status(current),
+                }
+            )
+
+        st.dataframe(
+            pd.DataFrame(history), use_container_width=True, hide_index=True
+        )
+
+    else:
+
+        st.info("برای نمایش نمودار ابتدا چند روز عملکرد ثبت کنید.")
+
+
+# ============================================================
+# Badges
+# ============================================================
+
+with tabs[7]:
+
+    st.subheader(tr("badges"))
+
+    streak = calculate_streak(records)
+
+    st.metric("🔥 Streak", f"{streak} روز")
+
+    badges = get_badges(records)
+
+    if badges:
+
+        for badge in badges:
+
+            st.success(f"### {badge}")
+
+    else:
+
+        st.info("هنوز مدالی باز نشده است.")
+
+
+# ============================================================
+# Smart Insights
+# ============================================================
+
+with tabs[8]:
+
+    st.subheader(tr("insights"))
+
+    if not records:
+
+        st.info("بعد از ثبت چند روز، تحلیل هوشمند فعال می‌شود.")
+
+    else:
+
+        average = sum(x.get("percent", 0) for x in records.values()) / len(
+            records
+        )
+
+        recent_keys = sorted(records)[-7:]
+
+        recent_average = sum(
+            records[k]["percent"] for k in recent_keys
+        ) / len(recent_keys)
+
+       
