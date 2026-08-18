@@ -2,24 +2,24 @@ import streamlit as st
 import sqlite3
 from datetime import date
 
-# 1. Page Configuration
+# 1. تنظیمات صفحه
 st.set_page_config(
     page_title="MyGrowth Pro Max",
     page_icon="🚀",
     layout="wide"
 )
 
-# 2. Database Initialization
+# 2. پایگاه داده
 def init_db():
     conn = sqlite3.connect("growth.db")
     c = conn.cursor()
     c.execute("""
-        CREATE TABLE IF NOT EXISTS sleep (
+        CREATE TABLE IF NOT EXISTS daily_log (
             uid TEXT,
-            date TEXT,
-            hours REAL,
-            quality INTEGER,
-            PRIMARY KEY (uid, date)
+            entry_date TEXT,
+            habit_name TEXT,
+            progress INTEGER,
+            PRIMARY KEY (uid, entry_date, habit_name)
         )
     """)
     conn.commit()
@@ -27,137 +27,92 @@ def init_db():
 
 init_db()
 
-def save_sleep(uid, s_date, hours, quality):
+def save_log(uid, entry_date, habit_name, progress):
     conn = sqlite3.connect("growth.db")
     c = conn.cursor()
     c.execute("""
-        INSERT OR REPLACE INTO sleep (uid, date, hours, quality)
+        INSERT OR REPLACE INTO daily_log (uid, entry_date, habit_name, progress)
         VALUES (?, ?, ?, ?)
-    """, (uid, s_date, hours, quality))
+    """, (uid, entry_date, habit_name, progress))
     conn.commit()
     conn.close()
 
-def get_sleep(uid, s_date):
-    conn = sqlite3.connect("growth.db")
-    c = conn.cursor()
-    c.execute("SELECT hours, quality FROM sleep WHERE uid=? AND date=?", (uid, s_date))
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return {"hours": row[0], "quality": row[1]}
-    return None
-
-# 3. User Setup
 uid = "default_user"
 
-# 4. Clean Custom CSS (Fixes UI and Tab Display Issues)
+# 3. استایل CSS اصلاح‌شده (رفع کامل مشکل ظاهر تب‌ها و فونت‌ها)
 st.markdown("""
 <style>
 .stApp {
     background-color: #0e1117;
 }
 .block-container {
-    padding-top: 1.5rem !important;
+    padding-top: 2rem !important;
     max-width: 1200px;
 }
 div[data-baseweb="tab-list"] {
-    gap: 6px !important;
+    gap: 10px !important;
     flex-wrap: wrap !important;
 }
 button[data-baseweb="tab"] {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-radius: 6px !important;
-    padding: 6px 12px !important;
+    background-color: #1e2530 !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
     color: #ffffff !important;
+    font-size: 15px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 button[data-baseweb="tab"][aria-selected="true"] {
     background-color: #ff4b4b !important;
     color: #ffffff !important;
+    font-weight: bold !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# 5. Define Navigation Tabs
+# 4. تعریف تب‌ها
 tabs = st.tabs([
     "🏠 داشبورد",
-    "📅 امروز",
+    "📅 ثبت امروز",
     "🔄 عادت‌ها",
     "📝 کارها",
     "🎯 اهداف",
-    "📅 تقویم",
-    "📈 رشد من",
-    "🏆 دستاوردها",
-    "🧠 تحلیل هوشمند",
-    "📖 ژورنال",
-    "😴 خواب",
     "⚙️ تنظیمات"
 ])
 
-# 6. Content for Each Tab
+# 5. محتوای تب‌ها
 with tabs[0]:
-    st.title("🏠 داشبورد اصلی")
-    st.info("به برنامه رشد فردی خوش آمدید! وضعیت کلی شما در اینجا نمایش داده می‌شود.")
+    st.header("🏠 داشبورد اصلی")
+    st.success("به برنامه رشد فردی خوش آمدید!")
 
 with tabs[1]:
-    st.title("📅 ثبت وضعیت امروز")
-    st.write("عادت‌ها و فعالیت‌های امروز خود را ثبت کنید.")
+    st.header("📅 ثبت وضعیت و فعالیت‌های امروز")
+    
+    selected_date = st.date_input("انتخاب تاریخ", date.today())
+    
+    st.subheader("ورود اطلاعات عادت‌ها:")
+    study_prog = st.slider("مطالعه (درصد):", 0, 100, 50)
+    exercise_prog = st.slider("ورزش (درصد):", 0, 100, 0)
+    chinese_prog = st.slider("مطالعه چینی (درصد):", 0, 100, 0)
+    
+    if st.button("💾 ذخیره اطلاعات امروز"):
+        save_log(uid, str(selected_date), "مطالعه", study_prog)
+        save_log(uid, str(selected_date), "ورزش", exercise_prog)
+        save_log(uid, str(selected_date), "چینی", chinese_prog)
+        st.success("اطلاعات با موفقیت ذخیره شد!")
 
 with tabs[2]:
-    st.title("🔄 مدیریت عادت‌ها")
-    st.write("عادت‌های جدید اضافه کنید یا وزن آن‌ها را تنظیم کنید.")
+    st.header("🔄 مدیریت عادت‌ها")
+    st.write("در این بخش می‌توانید عادت‌های جدید تعریف کنید.")
 
 with tabs[3]:
-    st.title("📝 مدیریت کارها (Tasks)")
-    st.write("کارهای روزانه و اولویت‌بندی آن‌ها.")
+    st.header("📝 لیست کارها")
+    st.text_input("کار جدید:")
 
 with tabs[4]:
-    st.title("🎯 اهداف (Goals)")
-    st.write("اهداف کوتاه مدت و بلند مدت خود را دنبال کنید.")
+    st.header("🎯 اهداف")
+    st.write("پیگیری اهداف ماهانه و سالانه.")
 
 with tabs[5]:
-    st.title("📅 تقویم عملکرد")
-    st.write("نمایش عملکرد ماهانه.")
-
-with tabs[6]:
-    st.title("📈 نمودار رشد")
-    st.write("پیشرفت ۷، ۳۰ و ۹۰ روزه خود را مشاهده کنید.")
-
-with tabs[7]:
-    st.title("🏆 مدال‌ها و دستاوردها")
-    st.write("مدال‌های کسب‌شده بر اساس عملکرد.")
-
-with tabs[8]:
-    st.title("🧠 تحلیل هوشمند")
-    st.write("تحلیل وضعیت بر اساس الگوریتم‌ها.")
-
-with tabs[9]:
-    st.title("📖 ژورنال روزانه")
-    st.write("یادداشت‌های روزانه و افکار خود را بنویسید.")
-
-with tabs[10]:
-    st.title("😴 پیگیری خواب")
-    sleep_date = st.date_input("تاریخ", date.today(), key="sleep_date")
-    sd = str(sleep_date)
-    old_sleep = get_sleep(uid, sd) or {}
-
-    hours = st.number_input(
-        "ساعت خواب",
-        0.0, 24.0,
-        float(old_sleep.get("hours", 8)),
-        0.5
-    )
-    quality = st.slider(
-        "کیفیت خواب (۱ تا ۵)",
-        1, 5,
-        int(old_sleep.get("quality", 3))
-    )
-
-    if st.button("💾 ذخیره خواب", key="save_sleep"):
-        save_sleep(uid, sd, hours, quality)
-        st.success("اطلاعات خواب با موفقیت ذخیره شد!")
-        st.rerun()
-
-with tabs[11]:
-    st.title("⚙️ تنظیمات")
-    st.write("تنظیمات حساب کاربری و برنامه.")
+    st.header("⚙️ تنظیمات")
+    st.write("تنظیمات برنامه.")
     
