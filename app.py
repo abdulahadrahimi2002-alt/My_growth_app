@@ -857,18 +857,64 @@ def save_journal(
 # SLEEP
 # ============================================================
 
-def get_sleep(uid, d):
-    con = db()
+with tabs[10]:
 
-    row = con.execute("""
-        SELECT *
-        FROM sleep
-        WHERE user_id=? AND sleep_date=?
-    """, (uid, d)).fetchone()
+    st.subheader(
+        "😴 پیگیری خواب"
+    )
 
-    con.close()
+    sleep_date = st.date_input(
+        "تاریخ",
+        date.today(),
+        key="sleep_date"
+    )
 
-    return dict(row) if row else None
+    sd = str(sleep_date)
 
+    old_sleep = get_sleep(
+        uid,
+        sd
+    ) or {}
 
-def save_sleep(uid, 
+    hours = st.number_input(
+        tr("sleep_hours"),
+        0.0,
+        24.0,
+        float(old_sleep.get("hours", 8)),
+        0.5
+    )
+
+    quality = st.slider(
+        "کیفیت خواب",
+        1,
+        5,
+        int(old_sleep.get("quality", 3))
+    )
+
+    if st.button(
+        "💾 ذخیره خواب",
+        key="save_sleep"
+    ):
+
+        save_sleep(
+            uid,
+            sd,
+            hours,
+            quality
+        )
+
+        st.success(
+            tr("success")
+        )
+
+        st.rerun()
+
+    if hours < 6:
+        st.warning(
+            "⚠️ خواب ثبت‌شده کمتر از ۶ ساعت است."
+        )
+
+    elif hours >= 7:
+        st.success(
+            "😴 مقدار خواب مناسب است."
+        )
