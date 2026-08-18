@@ -584,4 +584,31 @@ else:
         st.header("📈 روند رشد و تحلیل میانگین‌ها")
         records = get_records(uid)
         if records:
-            data = [{"تاریخ": d, "عملکرد (%)": v['percent'], "وضع
+                # 6. Growth (نمودار و تحلیل‌های میانگین)
+    elif page == "📈 روند رشد":
+        st.header("📈 روند رشد و تحلیل میانگین‌ها")
+        records = get_records(uid)
+        if records:
+            data = [
+                {
+                    "تاریخ": d,
+                    "عملکرد (%)": v["percent"],
+                    "وضعیت": get_status_label(v["percent"])[0],
+                }
+                for d, v in records.items()
+            ]
+            df = pd.DataFrame(data).sort_values("تاریخ")
+
+            # محاسبات میانگین
+            avg_all = round(df["عملکرد (%)"].mean(), 1)
+            recent_30_avg = round(df.tail(30)["عملکرد (%)"].mean(), 1)
+
+            m1, m2 = st.columns(2)
+            m1.metric("میانگین عملکرد کل دوره", f"{avg_all}%")
+            m2.metric("میانگین عملکرد ۳۰ روز اخیر", f"{recent_30_avg}%")
+
+            fig = px.line(
+                df, x="تاریخ", y="عملکرد (%)", hover_data=["وضعیت"], markers=True
+            )
+            st.plotly_chart(fig, use_container_width=True)
+    
