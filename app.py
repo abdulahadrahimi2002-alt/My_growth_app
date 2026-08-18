@@ -60,6 +60,20 @@ st.markdown(
 )
 
 # ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def get_status_label(percent):
+    if percent >= 85:
+        return "🌟 عالی", "#10B981"
+    elif percent >= 70:
+        return "👍 خوب", "#3B82F6"
+    elif percent >= 50:
+        return "😐 متوسط", "#F59E0B"
+    else:
+        return "⚠️ ضعیف", "#EF4444"
+
+# ============================================================
 # DATABASE & SECURITY
 # ============================================================
 
@@ -166,7 +180,6 @@ def init_db():
     """)
     con.commit()
 
-    # ساخت کاربر پیش‌فرض Rahimi
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute("SELECT id FROM users WHERE LOWER(username)='rahimi'").fetchone()
     if not admin_exists:
@@ -218,7 +231,7 @@ def create_user(username, email, password, language="dari"):
     
     if existing:
         con.close()
-        return False, "این نام کاربری یا ایمیل قبلاً ثبت شده است. از تب 'ورود به حساب' وارد شوید."
+        return False, "این نام کاربری یا ایمیل قبلاً ثبت شده است."
         
     try:
         now_iso = datetime.now().isoformat()
@@ -241,7 +254,7 @@ def create_user(username, email, password, language="dari"):
             )
             
         con.commit()
-        return True, "حساب با موفقیت ساخته شد! اکنون می‌توانید وارد شوید."
+        return True, "حساب با موفقیت ساخته شد!"
     except Exception as e:
         con.rollback()
         return False, f"خطا در ساخت حساب: {str(e)}"
@@ -280,12 +293,6 @@ def add_habit(user_id, name, category, weight):
         return False
     finally:
         con.close()
-
-def delete_habit(user_id, habit_id):
-    con = db()
-    con.execute("DELETE FROM habits WHERE id=? AND user_id=?", (habit_id, user_id))
-    con.commit()
-    con.close()
 
 def save_record(user_id, record_date, percent, details):
     con = db()
@@ -390,7 +397,7 @@ if "user" not in st.session_state:
 
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
-    st.caption("سیستم پیشرفته مدیریت رشد شخصی و عادت‌ها")
+    st.caption("سیستم پیشرفته مدیریت رشد شخصی")
     
     tab_login, tab_reg = st.tabs(["ورود به حساب", "ساخت حساب جدید"])
     
@@ -406,8 +413,6 @@ if not st.session_state.user:
                     st.rerun()
                 else:
                     st.error("نام کاربری یا رمز عبور اشتباه است.")
-            else:
-                st.warning("لطفاً نام کاربری و رمز عبور را وارد کنید.")
 
     with tab_reg:
         ru = st.text_input("نام کاربری جدید", key="r_u")
@@ -450,10 +455,17 @@ else:
         st.header("🏠 داشبورد رشد شخصی")
         records = get_records(uid)
         streak = calculate_streak(records)
-        col1, col2, col3 = st.columns(3)
+        
+        last_status, last_color = "ثبت‌نشده", "#6B7280"
+        if records:
+            last_record = list(records.values())[0]
+            last_status, last_color = get_status_label(last_record['percent'])
+
+        col1, col2, col3, col4 = st.columns(4)
         col1.metric("کل روزهای ثبت‌شده", f"{len(records)} روز")
         col2.metric("تداوم فعلی (Streak)", f"🔥 {streak} روز")
         col3.metric("امتیاز کل XP", f"⭐ {len(records) * 50} XP")
+        col4.metric("آخرین وضعیت", last_status)
 
     # 2. Today
     elif page == "📅 ثبت امروز":
@@ -471,7 +483,11 @@ else:
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
-        st.metric("میانگین عملکرد روزانه", f"{avg_score}%")
+        status, color = get_status_label(avg_score)
+        
+        c1, c2 = st.columns(2)
+        c1.metric("میانگین عملکرد روزانه", f"{avg_score}%")
+        c2.metric("ارزیابی وضعیت", status)
         
         if st.button("💾 ذخیره عملکرد"):
             save_record(uid, d_str, avg_score, details)
@@ -543,9 +559,9 @@ else:
         st.header("📈 روند رشد")
         records = get_records(uid)
         if records:
-            data = [{"تاریخ": d, "عملکرد (%)": v['percent']} for d, v in records.items()]
+            data = [{"تاریخ": d, "عملکرد (%)": v['percent'], "وضعیت": get_status_label(v['percent'])[0]} for d, v in records.items()]
             df = pd.DataFrame(data).sort_values("تاریخ")
-            fig = px.line(df, x="تاریخ", y="عملکرد (%)", markers=True)
+            fig = px.line(df, x="تاریخ", y="عملکرد (%)", hover_data=["وضعیت"], markers=True)
             st.plotly_chart(fig, use_container_width=True)
 
     # 7. Achievements
@@ -555,7 +571,6 @@ else:
         streak = calculate_streak(records)
         st.write(f"**نشان شروع:** {'✅' if len(records) >= 1 else '❌'} ثبت اولین روز")
         st.write(f"**نشان تداوم (۷ روز):** {'✅' if streak >= 7 else '❌'} ۷ روز تداوم")
-        st.write(f"**نشان استاد رشد (۳۰ روز):** {'✅' if len(records) >= 30 else '❌'} ۳۰ روز ثبت ثبت‌نام")
 
     # 8. Smart Analysis
     elif page == "🧠 تحلیل هوشمند":
@@ -563,25 +578,36 @@ else:
         records = get_records(uid)
         if records:
             avg_all = round(sum([v['percent'] for v in records.values()]) / len(records), 1)
-            st.info(f"میانگین عملکرد کل شما تا کنون: **{avg_all}%** است.")
-            if avg_all >= 70:
-                st.success("عملکرد بسیار عالی دارید! به همین روند ادامه دهید.")
-            else:
-                st.warning("می‌توانید با تمرکز روی عادت‌های با وزن بالاتر، میانگین خود را بهبود دهید.")
+            overall_status, _ = get_status_label(avg_all)
+            st.info(f"میانگین کل شما: **{avg_all}%** (وضعیت کلی: **{overall_status}**)")
 
-        # 9. Journal
+    # 9. Journal
     elif page == "🙂 ژورنال روزانه":
         st.header("🙂 ژورنال روزانه")
         j_date = st.date_input("تاریخ یادداشت", date.today())
         curr_j = get_journal(uid, j_date)
         
         mood = st.selectbox("حس و حال امروز", ["😊 عالی", "😐 معمولی", "پُر انرژی 🚀", "😔 خسته"], index=0)
-        
-        # کد اصلاح شده: پرانتزها و شرط به‌طور کامل بسته شده‌اند
         default_note = curr_j[1] if curr_j else ""
         note = st.text_area("یادداشت‌های امروز", value=default_note)
-        
         if st.button("ذخیره ژورنال"):
             save_journal(uid, j_date, mood, note)
             st.success("یادداشت ذخیره شد.")
+
+    # 10. Sleep
+    elif page == "😴 پایش خواب":
+        st.header("😴 پایش خواب")
+        s_date = st.date_input("تاریخ خواب", date.today())
+        curr_s = get_sleep(uid, s_date)
         
+        hours = st.number_input("ساعات خواب", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5)
+        quality = st.slider("کیفیت خواب (از ۱۰)", 1, 10, curr_s[1] if curr_s else 7)
+        if st.button("ذخیره وضعیت خواب"):
+            save_sleep(uid, s_date, hours, quality)
+            st.success("اطلاعات خواب ذخیره شد.")
+
+    # 11. Settings
+    elif page == "⚙️ تنظیمات":
+        st.header("⚙️ تنظیمات")
+        st.write(f"**نام کاربری:** {user['username']}")
+        st.write(f"**ایمیل:** {user['email']}")
