@@ -569,11 +569,19 @@ else:
             else:
                 st.warning("می‌توانید با تمرکز روی عادت‌های با وزن بالاتر، میانگین خود را بهبود دهید.")
 
-    # 9. Journal
+        # 9. Journal
     elif page == "🙂 ژورنال روزانه":
         st.header("🙂 ژورنال روزانه")
         j_date = st.date_input("تاریخ یادداشت", date.today())
         curr_j = get_journal(uid, j_date)
         
         mood = st.selectbox("حس و حال امروز", ["😊 عالی", "😐 معمولی", "پُر انرژی 🚀", "😔 خسته"], index=0)
-        note = st.text_area("یادداشت‌های امروز", value=curr_j[1] if c
+        
+        # کد اصلاح شده: پرانتزها و شرط به‌طور کامل بسته شده‌اند
+        default_note = curr_j[1] if curr_j else ""
+        note = st.text_area("یادداشت‌های امروز", value=default_note)
+        
+        if st.button("ذخیره ژورنال"):
+            save_journal(uid, j_date, mood, note)
+            st.success("یادداشت ذخیره شد.")
+        
