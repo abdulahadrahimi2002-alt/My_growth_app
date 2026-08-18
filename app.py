@@ -1,877 +1,874 @@
+# ============================================================
+# MyGrowth Pro Max
+# Personal Growth OS
+#
+# Run:
+#   pip install streamlit pandas plotly
+#   streamlit run app.py
+#
+# Database:
+#   mygrowth.db
+# ============================================================
+
+import streamlit as st
+import sqlite3
 import hashlib
+import secrets
 import json
-import os
+import io
 from datetime import date, datetime, timedelta
 
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit as st
+
 
 # ============================================================
-# MyGrowth Pro
-# Personal Growth + Habits + Tasks + Goals + Journal
+# CONFIG
 # ============================================================
 
 st.set_page_config(
-    page_title="MyGrowth Pro",
-    page_icon="🚀",
+    page_title="MyGrowth Pro Max",
+    page_icon="💗",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ---------------- CSS ----------------
-st.markdown(
-    """
+DB_FILE = "mygrowth.db"
+
+
+# ============================================================
+# CSS
+# ============================================================
+
+st.markdown("""
 <style>
+html, body, [class*="css"] {
+    font-family: Arial, sans-serif;
+}
+
 .main {
     direction: rtl;
-    text-align: right;
+}
+
+.block-container {
+    padding-top: 1.2rem;
+    max-width: 1500px;
 }
 
 .stButton > button {
     width: 100%;
     border-radius: 10px;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 [data-testid="stMetric"] {
-    border-radius: 12px;
-    padding: 10px;
+    background: rgba(255,255,255,.045);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 15px;
+    padding: 12px;
 }
 
-.block-container {
-    padding-top: 2rem;
+.hero {
+    padding: 28px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(255,75,120,.18),
+            rgba(100,80,255,.10)
+        );
+    border: 1px solid rgba(255,255,255,.08);
+}
+
+.card {
+    padding: 18px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.035);
+    border: 1px solid rgba(255,255,255,.07);
+    margin-bottom: 12px;
+}
+
+.badge {
+    padding: 16px;
+    border-radius: 15px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    margin: 8px 0;
+}
+
+.muted {
+    color: #9ca3af;
+}
+
+.big-number {
+    font-size: 34px;
+    font-weight: 800;
 }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 
 # ============================================================
-# Configuration
-# ============================================================
-
-USER_DIR = "users_data"
-os.makedirs(USER_DIR, exist_ok=True)
-
-DEFAULT_HABITS = {
-    "نماز / عبادات": 40,
-    "ورزش": 30,
-    "مطالعه": 30,
-}
-
-
-# ============================================================
-# Translation
+# TRANSLATION
 # ============================================================
 
 TEXT = {
-    "Dari": {
-        "title": "🚀 MyGrowth Pro",
-        "subtitle": "سیستم مدیریت رشد، عادت‌ها، اهداف و زندگی روزانه",
+    "dari": {
+        "language": "زبان",
+        "title": "MyGrowth Pro Max",
+        "subtitle": "سیستم شخصی مدیریت رشد، عادت‌ها، اهداف و زندگی روزانه",
         "login": "ورود",
         "register": "ثبت‌نام",
         "username": "نام کاربری",
+        "email": "ایمیل",
         "password": "رمز عبور",
         "confirm": "تکرار رمز عبور",
+        "login_btn": "ورود به حساب",
+        "register_btn": "ساخت حساب",
+        "logout": "خروج",
         "dashboard": "🏠 داشبورد",
-        "today": "📅 ثبت روزانه",
+        "today": "📅 امروز",
         "habits": "🔁 عادت‌ها",
         "tasks": "📝 کارها",
         "goals": "🎯 اهداف",
-        "calendar": "📅 تقویم",
-        "charts": "📈 رشد من",
+        "calendar": "🗓️ تقویم",
+        "growth": "📈 رشد من",
         "badges": "🏆 دستاوردها",
         "insights": "🧠 تحلیل هوشمند",
-        "journal": "🙂 یادداشت و حس‌وحال",
+        "journal": "🙂 ژورنال",
+        "sleep": "😴 خواب",
         "settings": "⚙️ تنظیمات",
-        "logout": "خروج",
         "save": "💾 ذخیره",
+        "add": "افزودن",
+        "delete": "🗑️ حذف",
+        "edit": "ویرایش",
+        "done": "انجام شد",
+        "cancel": "لغو",
+        "weight": "وزن",
+        "priority": "اولویت",
+        "high": "مهم و فوری",
+        "medium": "مهم",
+        "normal": "عادی",
+        "deadline": "مهلت",
+        "progress": "پیشرفت",
+        "today_performance": "عملکرد امروز",
+        "average": "میانگین عملکرد",
+        "weekly_average": "میانگین ۷ روز",
+        "monthly_average": "میانگین ۳۰ روز",
+        "records": "روزهای ثبت‌شده",
+        "streak": "تداوم",
+        "best": "بهترین عملکرد",
+        "xp": "امتیاز XP",
+        "level": "سطح",
+        "tasks_today": "کارهای امروز",
+        "active_goals": "اهداف فعال",
+        "new_habit": "عادت جدید",
+        "habit_name": "نام عادت",
+        "new_task": "کار جدید",
+        "new_goal": "هدف جدید",
+        "goal_title": "عنوان هدف",
+        "journal_title": "یادداشت امروز",
+        "mood": "حال امروز",
+        "energy": "انرژی",
+        "focus": "تمرکز",
+        "stress": "استرس",
+        "sleep_hours": "ساعات خواب",
+        "backup": "دانلود پشتیبان",
+        "restore": "بازیابی پشتیبان",
+        "export": "خروجی CSV",
+        "excellent": "عالی",
+        "good": "خوب",
+        "average_status": "متوسط",
+        "needs_effort": "نیاز به تلاش",
+        "success": "با موفقیت ذخیره شد.",
+        "wrong_login": "نام کاربری یا رمز عبور اشتباه است.",
     },
-    "English": {
-        "title": "🚀 MyGrowth Pro",
-        "subtitle": "Personal growth, habits, goals and daily life manager",
+
+    "en": {
+        "language": "Language",
+        "title": "MyGrowth Pro Max",
+        "subtitle": "Your personal growth, habits, goals and life management system",
         "login": "Login",
         "register": "Register",
         "username": "Username",
+        "email": "Email",
         "password": "Password",
         "confirm": "Confirm password",
+        "login_btn": "Log in",
+        "register_btn": "Create account",
+        "logout": "Logout",
         "dashboard": "🏠 Dashboard",
-        "today": "📅 Daily Entry",
+        "today": "📅 Today",
         "habits": "🔁 Habits",
         "tasks": "📝 Tasks",
         "goals": "🎯 Goals",
-        "calendar": "📅 Calendar",
-        "charts": "📈 My Growth",
+        "calendar": "🗓️ Calendar",
+        "growth": "📈 My Growth",
         "badges": "🏆 Achievements",
         "insights": "🧠 Smart Insights",
-        "journal": "🙂 Journal & Mood",
+        "journal": "🙂 Journal",
+        "sleep": "😴 Sleep",
         "settings": "⚙️ Settings",
-        "logout": "Logout",
         "save": "💾 Save",
-    },
+        "add": "Add",
+        "delete": "🗑️ Delete",
+        "edit": "Edit",
+        "done": "Done",
+        "cancel": "Cancel",
+        "weight": "Weight",
+        "priority": "Priority",
+        "high": "High",
+        "medium": "Medium",
+        "normal": "Normal",
+        "deadline": "Deadline",
+        "progress": "Progress",
+        "today_performance": "Today's performance",
+        "average": "Average performance",
+        "weekly_average": "7-Day average",
+        "monthly_average": "30-Day average",
+        "records": "Recorded days",
+        "streak": "Streak",
+        "best": "Best performance",
+        "xp": "XP",
+        "level": "Level",
+        "tasks_today": "Today's tasks",
+        "active_goals": "Active goals",
+        "new_habit": "New habit",
+        "habit_name": "Habit name",
+        "new_task": "New task",
+        "new_goal": "New goal",
+        "goal_title": "Goal title",
+        "journal_title": "Today's journal",
+        "mood": "Today's mood",
+        "energy": "Energy",
+        "focus": "Focus",
+        "stress": "Stress",
+        "sleep_hours": "Sleep hours",
+        "backup": "Download backup",
+        "restore": "Restore backup",
+        "export": "CSV export",
+        "excellent": "Excellent",
+        "good": "Good",
+        "average_status": "Average",
+        "needs_effort": "Needs effort",
+        "success": "Saved successfully.",
+        "wrong_login": "Invalid username or password.",
+    }
 }
 
 
-# ============================================================
-# Utility Functions
-# ============================================================
-
-
 def tr(key):
-    lang = st.session_state.get("lang", "Dari")
-    return TEXT.get(lang, TEXT["Dari"]).get(key, key)
+    lang = st.session_state.get("lang", "dari")
+    return TEXT.get(lang, TEXT["dari"]).get(key, key)
 
+
+# ============================================================
+# DATABASE
+# ============================================================
+
+def db():
+    con = sqlite3.connect(DB_FILE)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys = ON")
+    return con
+
+
+def init_db():
+    con = db()
+    cur = con.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            language TEXT DEFAULT 'dari',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS habits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            category TEXT DEFAULT 'General',
+            weight REAL DEFAULT 10,
+            active INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            UNIQUE(user_id, name),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            record_date TEXT NOT NULL,
+            percent REAL NOT NULL,
+            details TEXT NOT NULL,
+            UNIQUE(user_id, record_date),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            task_date TEXT NOT NULL,
+            title TEXT NOT NULL,
+            priority TEXT DEFAULT 'normal',
+            done INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            start_date TEXT,
+            deadline TEXT,
+            progress INTEGER DEFAULT 0,
+            priority TEXT DEFAULT 'normal',
+            done INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            journal_date TEXT NOT NULL,
+            mood INTEGER DEFAULT 3,
+            energy INTEGER DEFAULT 3,
+            focus INTEGER DEFAULT 3,
+            stress INTEGER DEFAULT 3,
+            wins TEXT DEFAULT '',
+            lesson TEXT DEFAULT '',
+            tomorrow TEXT DEFAULT '',
+            note TEXT DEFAULT '',
+            UNIQUE(user_id, journal_date),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS sleep (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sleep_date TEXT NOT NULL,
+            hours REAL DEFAULT 0,
+            quality INTEGER DEFAULT 3,
+            UNIQUE(user_id, sleep_date),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        )
+    """)
+
+    con.commit()
+    con.close()
+
+
+init_db()
+
+
+# ============================================================
+# PASSWORD
+# ============================================================
 
 def hash_password(password):
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+    salt = secrets.token_bytes(16)
+
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode(),
+        salt,
+        150000
+    )
+
+    return salt.hex() + ":" + digest.hex()
 
 
-def user_folder(username):
-    folder_name = hash_password(username)[:20]
-    path = os.path.join(USER_DIR, folder_name)
-    os.makedirs(path, exist_ok=True)
-    return path
+def verify_password(password, stored):
+    try:
+        salt, digest = stored.split(":")
+
+        new_digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode(),
+            bytes.fromhex(salt),
+            150000
+        )
+
+        return secrets.compare_digest(
+            new_digest.hex(),
+            digest
+        )
+
+    except Exception:
+        return False
 
 
-def user_file(username, filename):
-    return os.path.join(user_folder(username), filename)
+# ============================================================
+# USER FUNCTIONS
+# ============================================================
 
-
-def load_json(path, default):
-    if not os.path.exists(path):
-        return default
+def create_user(username, email, password, language):
+    con = db()
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return default
+        cur = con.cursor()
+
+        cur.execute("""
+            INSERT INTO users
+            (username,email,password_hash,language,created_at)
+            VALUES(?,?,?,?,?)
+        """, (
+            username.strip(),
+            email.strip().lower(),
+            hash_password(password),
+            language,
+            datetime.now().isoformat()
+        ))
+
+        uid = cur.lastrowid
+
+        defaults = [
+            ("نماز / عبادات", "Spiritual", 35),
+            ("ورزش", "Health", 25),
+            ("مطالعه", "Learning", 20),
+            ("یادگیری زبان", "Learning", 20),
+        ]
+
+        for name, category, weight in defaults:
+            cur.execute("""
+                INSERT INTO habits
+                (user_id,name,category,weight,created_at)
+                VALUES(?,?,?,?,?)
+            """, (
+                uid,
+                name,
+                category,
+                weight,
+                datetime.now().isoformat()
+            ))
+
+        con.commit()
+        return True
+
+    except sqlite3.IntegrityError:
+        con.rollback()
+        return False
+
+    finally:
+        con.close()
 
 
-def save_json(path, data):
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def authenticate(username, password):
+    con = db()
+
+    row = con.execute("""
+        SELECT *
+        FROM users
+        WHERE username=?
+    """, (username.strip(),)).fetchone()
+
+    con.close()
+
+    if row and verify_password(password, row["password_hash"]):
+        return row
+
+    return None
 
 
-def load_user(username, filename, default):
-    return load_json(user_file(username, filename), default)
+def change_password(uid, new_password):
+    con = db()
+
+    con.execute("""
+        UPDATE users
+        SET password_hash=?
+        WHERE id=?
+    """, (
+        hash_password(new_password),
+        uid
+    ))
+
+    con.commit()
+    con.close()
 
 
-def save_user(username, filename, data):
-    save_json(user_file(username, filename), data)
+def delete_account(uid):
+    con = db()
 
-
-def calculate_streak(records):
-    if not records:
-        return 0
-
-    available_dates = {date.fromisoformat(x) for x in records.keys()}
-
-    check = date.today()
-
-    if (
-        check not in available_dates
-        and check - timedelta(days=1) in available_dates
-    ):
-        check -= timedelta(days=1)
-
-    streak = 0
-
-    while check in available_dates:
-        streak += 1
-        check -= timedelta(days=1)
-
-    return streak
-
-
-def get_status(percent):
-    if percent >= 85:
-        return "🏆 عالی"
-    if percent >= 70:
-        return "✨ خوب"
-    if percent >= 50:
-        return "🟡 متوسط"
-    if percent >= 30:
-        return "🟠 نیاز به تلاش"
-
-    return "🔴 ضعیف"
-
-
-def get_badges(records):
-    streak = calculate_streak(records)
-    badges = []
-
-    if streak >= 3:
-        badges.append("🔥 ۳ روز تداوم")
-
-    if streak >= 7:
-        badges.append("⚡ یک هفته تداوم")
-
-    if streak >= 30:
-        badges.append("👑 ۳۰ روز تداوم")
-
-    perfect_days = sum(
-        1 for record in records.values() if record.get("percent", 0) >= 100
+    con.execute(
+        "DELETE FROM users WHERE id=?",
+        (uid,)
     )
 
-    if perfect_days >= 1:
-        badges.append("🎯 اولین عملکرد ۱۰۰٪")
-
-    if perfect_days >= 10:
-        badges.append("🌟 ده روز عملکرد کامل")
-
-    if len(records) >= 30:
-        badges.append("📚 ثبت ۳۰ روز اطلاعات")
-
-    return badges
+    con.commit()
+    con.close()
 
 
 # ============================================================
-# Session
+# HABITS
 # ============================================================
 
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
+def get_habits(uid):
+    con = db()
 
-if "username" not in st.session_state:
-    st.session_state.username = ""
+    rows = con.execute("""
+        SELECT *
+        FROM habits
+        WHERE user_id=? AND active=1
+        ORDER BY id
+    """, (uid,)).fetchall()
 
-if "lang" not in st.session_state:
-    st.session_state.lang = "Dari"
+    con.close()
+
+    return [dict(r) for r in rows]
+
+
+def add_habit(uid, name, category, weight):
+    con = db()
+
+    try:
+        con.execute("""
+            INSERT INTO habits
+            (user_id,name,category,weight,created_at)
+            VALUES(?,?,?,?,?)
+        """, (
+            uid,
+            name.strip(),
+            category,
+            weight,
+            datetime.now().isoformat()
+        ))
+
+        con.commit()
+        return True
+
+    except sqlite3.IntegrityError:
+        return False
+
+    finally:
+        con.close()
+
+
+def update_habit(uid, hid, name, category, weight):
+    con = db()
+
+    con.execute("""
+        UPDATE habits
+        SET name=?,category=?,weight=?
+        WHERE id=? AND user_id=?
+    """, (
+        name,
+        category,
+        weight,
+        hid,
+        uid
+    ))
+
+    con.commit()
+    con.close()
+
+
+def delete_habit(uid, hid):
+    con = db()
+
+    con.execute("""
+        UPDATE habits
+        SET active=0
+        WHERE id=? AND user_id=?
+    """, (hid, uid))
+
+    con.commit()
+    con.close()
 
 
 # ============================================================
-# Language
+# RECORDS
 # ============================================================
 
-language = st.sidebar.radio("🌐 Language / زبان", ["🇦🇫 دری", "🇬🇧 English"])
+def get_records(uid):
+    con = db()
 
-st.session_state.lang = "Dari" if "دری" in language else "English"
+    rows = con.execute("""
+        SELECT record_date,percent,details
+        FROM records
+        WHERE user_id=?
+        ORDER BY record_date
+    """, (uid,)).fetchall()
+
+    con.close()
+
+    result = {}
+
+    for r in rows:
+        try:
+            details = json.loads(r["details"])
+        except Exception:
+            details = {}
+
+        result[r["record_date"]] = {
+            "percent": r["percent"],
+            "details": details
+        }
+
+    return result
+
+
+def save_record(uid, d, percent, details):
+    con = db()
+
+    con.execute("""
+        INSERT INTO records
+        (user_id,record_date,percent,details)
+        VALUES(?,?,?,?)
+        ON CONFLICT(user_id,record_date)
+        DO UPDATE SET
+            percent=excluded.percent,
+            details=excluded.details
+    """, (
+        uid,
+        d,
+        percent,
+        json.dumps(details, ensure_ascii=False)
+    ))
+
+    con.commit()
+    con.close()
 
 
 # ============================================================
-# Users Database
+# TASKS
 # ============================================================
 
-users_file = os.path.join(USER_DIR, "users.json")
+def get_tasks(uid, task_date=None):
+    con = db()
 
-users = load_json(users_file, {})
-
-
-# ============================================================
-# Authentication
-# ============================================================
-
-if not st.session_state.authenticated:
-
-    st.markdown(
-        """
-        <div style="
-            text-align:center;
-            padding:30px;
-        ">
-            <div style="font-size:60px;">🚀</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.title(tr("title"))
-    st.caption(tr("subtitle"))
-
-    auth_mode = st.radio(
-        "Choose / انتخاب", [tr("login"), tr("register")], horizontal=True
-    )
-
-    username = st.text_input(tr("username"))
-
-    password = st.text_input(tr("password"), type="password")
-
-    if auth_mode == tr("register"):
-
-        confirm = st.text_input(tr("confirm"), type="password")
-
-        if st.button(tr("register"), type="primary"):
-
-            if not username.strip():
-                st.warning("نام کاربری را وارد کنید.")
-
-            elif len(password) < 6:
-                st.warning("رمز عبور باید حداقل ۶ کاراکتر باشد.")
-
-            elif password != confirm:
-                st.warning("رمزهای عبور یکسان نیستند.")
-
-            elif username in users:
-                st.error("این نام کاربری قبلاً وجود دارد.")
-
-            else:
-
-                users[username] = hash_password(password)
-
-                save_json(users_file, users)
-
-                # Create default user data
-                save_user(username, "habits.json", DEFAULT_HABITS)
-
-                save_user(username, "records.json", {})
-
-                save_user(username, "tasks.json", [])
-
-                save_user(username, "goals.json", [])
-
-                save_user(username, "journal.json", {})
-
-                st.success("ثبت‌نام موفق شد. اکنون وارد شوید.")
-
+    if task_date:
+        rows = con.execute("""
+            SELECT *
+            FROM tasks
+            WHERE user_id=? AND task_date=?
+            ORDER BY done, id
+        """, (uid, task_date)).fetchall()
     else:
+        rows = con.execute("""
+            SELECT *
+            FROM tasks
+            WHERE user_id=?
+            ORDER BY task_date DESC, done, id
+        """, (uid,)).fetchall()
 
-        if st.button(tr("login"), type="primary"):
+    con.close()
 
-            if (
-                username in users
-                and users[username] == hash_password(password)
-            ):
-
-                st.session_state.authenticated = True
-                st.session_state.username = username
-
-                st.rerun()
-
-            else:
-
-                st.error("نام کاربری یا رمز عبور اشتباه است.")
-
-    st.stop()
+    return [dict(r) for r in rows]
 
 
-# ============================================================
-# User Data
-# ============================================================
+def add_task(uid, d, title, priority):
+    con = db()
 
-user = st.session_state.username
+    con.execute("""
+        INSERT INTO tasks
+        (user_id,task_date,title,priority,created_at)
+        VALUES(?,?,?,?,?)
+    """, (
+        uid,
+        d,
+        title,
+        priority,
+        datetime.now().isoformat()
+    ))
 
-habits = load_user(user, "habits.json", DEFAULT_HABITS.copy())
-
-records = load_user(user, "records.json", {})
-
-tasks = load_user(user, "tasks.json", [])
-
-goals = load_user(user, "goals.json", [])
-
-journal = load_user(user, "journal.json", {})
-
-
-# ============================================================
-# Sidebar
-# ============================================================
-
-st.sidebar.markdown("---")
-st.sidebar.markdown(f"### 👤 {user}")
-
-if st.sidebar.button(tr("logout")):
-
-    st.session_state.authenticated = False
-    st.session_state.username = ""
-
-    st.rerun()
+    con.commit()
+    con.close()
 
 
-# ============================================================
-# Main Header
-# ============================================================
+def toggle_task(uid, tid, done):
+    con = db()
 
-st.title(tr("title"))
-st.caption(tr("subtitle"))
+    con.execute("""
+        UPDATE tasks
+        SET done=?
+        WHERE id=? AND user_id=?
+    """, (int(done), tid, uid))
+
+    con.commit()
+    con.close()
+
+
+def delete_task(uid, tid):
+    con = db()
+
+    con.execute("""
+        DELETE FROM tasks
+        WHERE id=? AND user_id=?
+    """, (tid, uid))
+
+    con.commit()
+    con.close()
 
 
 # ============================================================
-# Navigation
+# GOALS
 # ============================================================
 
-tabs = st.tabs(
-    [
-        tr("dashboard"),
-        tr("today"),
-        tr("habits"),
-        tr("tasks"),
-        tr("goals"),
-        tr("calendar"),
-        tr("charts"),
-        tr("badges"),
-        tr("insights"),
-        tr("journal"),
-        tr("settings"),
-    ]
-)
+def get_goals(uid):
+    con = db()
+
+    rows = con.execute("""
+        SELECT *
+        FROM goals
+        WHERE user_id=?
+        ORDER BY done, deadline
+    """, (uid,)).fetchall()
+
+    con.close()
+
+    return [dict(r) for r in rows]
 
 
-today = str(date.today())
+def add_goal(uid, title, description, start, deadline, priority):
+    con = db()
+
+    con.execute("""
+        INSERT INTO goals
+        (user_id,title,description,start_date,deadline,priority,created_at)
+        VALUES(?,?,?,?,?,?,?)
+    """, (
+        uid,
+        title,
+        description,
+        start,
+        deadline,
+        priority,
+        datetime.now().isoformat()
+    ))
+
+    con.commit()
+    con.close()
 
 
-# ============================================================
-# Dashboard
-# ============================================================
+def update_goal(uid, gid, progress, done):
+    con = db()
 
-with tabs[0]:
+    con.execute("""
+        UPDATE goals
+        SET progress=?,done=?
+        WHERE id=? AND user_id=?
+    """, (
+        progress,
+        int(done),
+        gid,
+        uid
+    ))
 
-    st.subheader(tr("dashboard"))
+    con.commit()
+    con.close()
 
-    streak = calculate_streak(records)
 
-    average = (
-        sum(r.get("percent", 0) for r in records.values()) / len(records)
-        if records
-        else 0
-    )
+def delete_goal(uid, gid):
+    con = db()
 
-    best = max([r.get("percent", 0) for r in records.values()], default=0)
+    con.execute("""
+        DELETE FROM goals
+        WHERE id=? AND user_id=?
+    """, (gid, uid))
 
-    c1, c2, c3, c4 = st.columns(4)
-
-    c1.metric("📅 روزهای ثبت", len(records))
-
-    c2.metric("📊 میانگین", f"{average:.1f}%")
-
-    c3.metric("🔥 Streak", f"{streak} روز")
-
-    c4.metric("🏆 بهترین", f"{best:.0f}%")
-
-    st.markdown("---")
-
-    if today in records:
-
-        current = records[today]["percent"]
-
-        st.success(f"عملکرد امروز: **{current}%** — " f"{get_status(current)}")
-
-    else:
-
-        st.info("امروز هنوز عملکرد خود را ثبت نکرده‌اید.")
-
-    if records:
-
-        keys = sorted(records)
-
-        recent = keys[-14:]
-
-        values = [records[k]["percent"] for k in recent]
-
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Scatter(
-                x=recent,
-                y=values,
-                mode="lines+markers",
-                line=dict(width=3),
-                marker=dict(size=8),
-            )
-        )
-
-        fig.add_hline(y=75, line_dash="dash", annotation_text="هدف 75%")
-
-        fig.update_layout(yaxis=dict(range=[0, 105]), height=350)
-
-        st.plotly_chart(fig, use_container_width=True)
+    con.commit()
+    con.close()
 
 
 # ============================================================
-# Daily Entry
+# JOURNAL
 # ============================================================
 
-with tabs[1]:
+def get_journal(uid, d):
+    con = db()
 
-    st.subheader(tr("today"))
+    row = con.execute("""
+        SELECT *
+        FROM journal
+        WHERE user_id=? AND journal_date=?
+    """, (uid, d)).fetchone()
 
-    st.write(f"📅 **تاریخ:** {today}")
+    con.close()
 
-    if not habits:
-
-        st.warning("هنوز هیچ عادتی ندارید.")
-
-    else:
-
-        old_details = records.get(today, {}).get("details", {})
-
-        total_weight = sum(habits.values())
-
-        earned = 0
-        scores = {}
-
-        for habit, weight in habits.items():
-
-            value = st.slider(
-                f"{habit} — وزن {weight}٪",
-                0,
-                100,
-                int(old_details.get(habit, 0)),
-                5,
-                key=f"daily_{habit}",
-            )
-
-            scores[habit] = value
-
-            earned += (value / 100) * weight
-
-            st.caption(f"امتیاز این عادت: " f"{(value / 100) * weight:.1f}٪")
-
-        final_percent = (
-            round(earned / total_weight * 100) if total_weight else 0
-        )
-
-        st.progress(final_percent / 100)
-
-        st.subheader(f"💗 عملکرد امروز: **{final_percent}%**")
-
-        st.write(get_status(final_percent))
-
-        if st.button(tr("save"), type="primary", key="save_daily"):
-
-            records[today] = {"percent": final_percent, "details": scores}
-
-            save_user(user, "records.json", records)
-
-            st.success("عملکرد امروز ذخیره شد.")
-
-            st.rerun()
+    return dict(row) if row else None
 
 
-# ============================================================
-# Habits
-# ============================================================
+def save_journal(
+    uid,
+    d,
+    mood,
+    energy,
+    focus,
+    stress,
+    wins,
+    lesson,
+    tomorrow,
+    note
+):
+    con = db()
 
-with tabs[2]:
+    con.execute("""
+        INSERT INTO journal
+        (user_id,journal_date,mood,energy,focus,stress,wins,lesson,tomorrow,note)
+        VALUES(?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(user_id,journal_date)
+        DO UPDATE SET
+            mood=excluded.mood,
+            energy=excluded.energy,
+            focus=excluded.focus,
+            stress=excluded.stress,
+            wins=excluded.wins,
+            lesson=excluded.lesson,
+            tomorrow=excluded.tomorrow,
+            note=excluded.note
+    """, (
+        uid,
+        d,
+        mood,
+        energy,
+        focus,
+        stress,
+        wins,
+        lesson,
+        tomorrow,
+        note
+    ))
 
-    st.subheader(tr("habits"))
-
-    c1, c2 = st.columns([3, 2])
-
-    with c1:
-
-        new_habit = st.text_input("نام عادت جدید")
-
-    with c2:
-
-        new_weight = st.number_input(
-            "وزن عادت", min_value=1, max_value=100, value=10, step=5
-        )
-
-    if st.button("➕ افزودن عادت"):
-
-        if new_habit.strip() and new_habit not in habits:
-
-            habits[new_habit] = new_weight
-
-            save_user(user, "habits.json", habits)
-
-            st.rerun()
-
-    total = sum(habits.values())
-
-    if total == 100:
-
-        st.success("مجموع وزن‌ها دقیقاً ۱۰۰٪ است.")
-
-    else:
-
-        st.warning(f"مجموع وزن‌ها: {total}% — " f"بهتر است ۱۰۰٪ باشد.")
-
-    for habit, weight in list(habits.items()):
-
-        c1, c2, c3 = st.columns([4, 2, 1])
-
-        c1.write(f"**{habit}**")
-
-        c2.write(f"{weight}%")
-
-        if c3.button("🗑️", key=f"delete_{habit}"):
-
-            del habits[habit]
-
-            save_user(user, "habits.json", habits)
-
-            st.rerun()
+    con.commit()
+    con.close()
 
 
 # ============================================================
-# Tasks
+# SLEEP
 # ============================================================
 
-with tabs[3]:
+def get_sleep(uid, d):
+    con = db()
 
-    st.subheader(tr("tasks"))
+    row = con.execute("""
+        SELECT *
+        FROM sleep
+        WHERE user_id=? AND sleep_date=?
+    """, (uid, d)).fetchone()
 
-    task_title = st.text_input("کار جدید")
+    con.close()
 
-    priority = st.selectbox(
-        "اولویت", ["🔴 مهم و فوری", "🟡 مهم", "🔵 عادی"]
-    )
+    return dict(row) if row else None
 
-    if st.button("➕ افزودن کار"):
 
-        if task_title.strip():
-
-            tasks.append(
-                {
-                    "id": datetime.now().timestamp(),
-                    "text": task_title,
-                    "priority": priority,
-                    "done": False,
-                    "date": today,
-                }
-            )
-
-            save_user(user, "tasks.json", tasks)
-
-            st.rerun()
-
-    today_tasks = [t for t in tasks if t.get("date") == today]
-
-    done_count = 0
-
-    for task in today_tasks:
-
-        checked = st.checkbox(
-            f"{task['priority']} — {task['text']}",
-            value=task.get("done", False),
-            key=f"task_{task['id']}",
-        )
-
-        if checked:
-
-            done_count += 1
-
-        if checked != task.get("done", False):
-
-            task["done"] = checked
-
-            save_user(user, "tasks.json", tasks)
-
-    st.metric("کارهای انجام‌شده", f"{done_count}/{len(today_tasks)}")
-
-
-# ============================================================
-# Goals
-# ============================================================
-
-with tabs[4]:
-
-    st.subheader(tr("goals"))
-
-    goal_title = st.text_input("عنوان هدف")
-
-    deadline = st.date_input("مهلت هدف")
-
-    if st.button("🎯 افزودن هدف"):
-
-        if goal_title.strip():
-
-            goals.append(
-                {
-                    "id": datetime.now().timestamp(),
-                    "title": goal_title,
-                    "deadline": str(deadline),
-                    "progress": 0,
-                    "created": today,
-                }
-            )
-
-            save_user(user, "goals.json", goals)
-
-            st.rerun()
-
-    for index, goal in enumerate(list(goals)):
-
-        st.markdown(f"### 🎯 {goal['title']}")
-
-        st.write(f"مهلت: {goal['deadline']}")
-
-        progress = st.slider(
-            "پیشرفت",
-            0,
-            100,
-            int(goal.get("progress", 0)),
-            key=f"goal_{goal.get('id', index)}",
-        )
-
-        st.progress(progress / 100)
-
-        if progress != goal.get("progress", 0):
-
-            goal["progress"] = progress
-
-            save_user(user, "goals.json", goals)
-
-        if st.button("🗑️ حذف هدف", key=f"delete_goal_{goal.get('id', index)}"):
-
-            goals.remove(goal)
-
-            save_user(user, "goals.json", goals)
-
-            st.rerun()
-
-
-# ============================================================
-# Calendar
-# ============================================================
-
-with tabs[5]:
-
-    st.subheader(tr("calendar"))
-
-    if not records:
-
-        st.info("هنوز هیچ روزی ثبت نشده است.")
-
-    else:
-
-        rows = []
-
-        for day, record in sorted(records.items(), reverse=True):
-
-            rows.append(
-                {
-                    "تاریخ": day,
-                    "عملکرد": record.get("percent", 0),
-                    "وضعیت": get_status(record.get("percent", 0)),
-                }
-            )
-
-        st.dataframe(
-            pd.DataFrame(rows), use_container_width=True, hide_index=True
-        )
-
-
-# ============================================================
-# Charts
-# ============================================================
-
-with tabs[6]:
-
-    st.subheader(tr("charts"))
-
-    if records:
-
-        keys = sorted(records)
-
-        period = st.selectbox("بازه زمانی", ["7 روز", "30 روز", "90 روز", "همه"])
-
-        if period == "همه":
-
-            selected = keys
-
-        else:
-
-            number = int(period.split()[0])
-
-            selected = keys[-number:]
-
-        values = [records[k]["percent"] for k in selected]
-
-        fig = go.Figure()
-
-        fig.add_trace(
-            go.Scatter(
-                x=selected,
-                y=values,
-                mode="lines+markers+text",
-                text=[f"{x}%" for x in values],
-                textposition="top center",
-                line=dict(width=3),
-                marker=dict(size=8),
-            )
-        )
-
-        fig.add_hline(y=75, line_dash="dash", annotation_text="هدف 75%")
-
-        fig.update_layout(yaxis=dict(range=[0, 105]), height=450)
-
-        st.plotly_chart(fig, use_container_width=True)
-
-        history = []
-
-        for i, key in enumerate(keys):
-
-            current = records[key]["percent"]
-
-            if i == 0:
-
-                change = "—"
-
-            else:
-
-                previous = records[keys[i - 1]]["percent"]
-
-                change = f"{current - previous:+g}%"
-
-            history.append(
-                {
-                    "تاریخ": key,
-                    "عملکرد": f"{current}%",
-                    "تغییر": change,
-                    "وضعیت": get_status(current),
-                }
-            )
-
-        st.dataframe(
-            pd.DataFrame(history), use_container_width=True, hide_index=True
-        )
-
-    else:
-
-        st.info("برای نمایش نمودار ابتدا چند روز عملکرد ثبت کنید.")
-
-
-# ============================================================
-# Badges
-# ============================================================
-
-with tabs[7]:
-
-    st.subheader(tr("badges"))
-
-    streak = calculate_streak(records)
-
-    st.metric("🔥 Streak", f"{streak} روز")
-
-    badges = get_badges(records)
-
-    if badges:
-
-        for badge in badges:
-
-            st.success(f"### {badge}")
-
-    else:
-
-        st.info("هنوز مدالی باز نشده است.")
-
-
-# ============================================================
-# Smart Insights
-# ============================================================
-
-with tabs[8]:
-
-    st.subheader(tr("insights"))
-
-    if not records:
-
-        st.info("بعد از ثبت چند روز، تحلیل هوشمند فعال می‌شود.")
-
-    else:
-
-        average = sum(x.get("percent", 0) for x in records.values()) / len(
-            records
-        )
-
-        recent_keys = sorted(records)[-7:]
-
-        recent_average = sum(
-            records[k]["percent"] for k in recent_keys
-        ) / len(recent_keys)
-
-       
+def save_sleep(uid, 
