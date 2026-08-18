@@ -577,29 +577,46 @@ with tabs[0]:
     c1,c2,c3,c4 = st.columns(4)
     with c1: st.metric(tr("today_performance"), f"{latest:g}%")
     with c2: st.metric(tr("growth_vs_previous"), "—" if change is None else f"{change:+g}%")
-    with c3: st.metric(tr("weekly_average"), f"{week_avg:g}%")
-    with c4: st.metric(tr("streak"), f"{streak(keys)} روز" if st.session_state.lang=="dari" else f"{streak(keys)} days")
-
-    if change is not None:
-        if change > 0: st.success(f"🚀 +{change:g}%")
-        elif change < 0: st.warning(f"💪 {abs(change):g}%")
-        else: st.info("➡️ 0%")
-
-    tasks = get_tasks(user_id, today_key)
-    done = sum(t["done"] for t in tasks)
-    st.markdown(f"### {tr('tasks_today')}: {done}/{len(tasks)}")
-
+    # ---------------- Growth ----------------
+with tabs[4]:
+    st.subheader(tr("growth"))
+    keys = sorted(records)
     if keys:
-        ck = keys[-14:]
+        period = st.selectbox("Range / بازه", ["7", "14", "30", "All"])
+        n = len(keys) if period == "All" else int(period)
+        ck = keys[-n:]
         vals = [records[k]["percent"] for k in ck]
+
         fig = go.Figure(go.Scatter(
-            x=[k[5:] for k in ck], y=vals,
-            mode="lines+markers", line=dict(width=3), marker=dict(size=9)
+            x=[k[5:] for k in ck],
+            y=vals,
+            mode="lines+markers+text",
+            text=[f"{v:g}%" for v in vals],
+            textposition="top center",
+            line=dict(width=3),
+            marker=dict(size=9)
         ))
         fig.add_hline(y=75, line_dash="dash", annotation_text="75%")
         fig.update_layout(
-            yaxis=dict(range=[0,105]), height=360,
-            paper_bgcolor="#0b0e13", plot_bgcolor="#11151c",
-            font=dict(color="white"), margin=dict(l=20,r=20,t=45,b=30)
+            yaxis=dict(range=[0, 105]),
+            height=480,
+            paper_bgcolor="#0b0e13",
+            plot_bgcolor="#11151c",
+            font=dict(color="white")
         )
-        st.plotly_chart(fig, use_container_width=
+        st.plotly_chart(fig, use_container_width=True)
+
+        history = []
+        for i, k in enumerate(keys):
+            v = records[k]["percent"]
+            diff = "—" if i == 0 else f"{v-records[keys[i-1]]['percent']:+g}%"
+            history.append({
+                "Date / تاریخ": k,
+                "Performance / عملکرد": f"{v:g}%",
+                "Change / تغییر": diff,
+                "Status / وضعیت": status(v)
+            })
+        st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
+    else:
+        st.info(tr("empty"))
+        
