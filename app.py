@@ -4,7 +4,6 @@ import os
 from datetime import date, timedelta
 import pandas as pd
 import plotly.graph_objects as go
-import io
 
 # ---------------- File Paths ----------------
 HABITS_FILE = "habits.json"
@@ -75,9 +74,9 @@ def get_badges(records, streak):
 
 # ---------------- Load Data ----------------
 default_habits = {
-    "ورزش": 40,
-    "مطالعه چینی": 30,
-    "برنامه‌نویسی": 30
+    "نماز / عبادات": 40,
+    "ورزش": 30,
+    "مطالعه": 30
 }
 habits_data = load_json(HABITS_FILE, default_habits)
 
@@ -93,7 +92,7 @@ notes = load_json(NOTES_FILE, {})
 st.set_page_config(page_title="MyGrowth Ultra", page_icon="💖", layout="wide")
 
 st.title("💖 MyGrowth")
-st.caption("پلنر شخصی هوشمند برای برنامه‌ریزی، عادت‌های وزن‌دار، دستاوردها و رشد واقعی")
+st.caption("پلنر شخصی هوشمند برای برنامه‌ریزی، ثبت درصدی عادت‌ها و رشد واقعی")
 
 # ---------------- Tabs Layout ----------------
 tabs = st.tabs([
@@ -123,7 +122,7 @@ with tabs[0]:
         latest_k = sorted(records.keys())[-1]
         st.write(f"**آخرین ثبت ({latest_k}):** {records[latest_k]['percent']}%")
 
-# ---------------- Tab 2: Today ----------------
+# ---------------- Tab 2: Today (Percentage Sliders) ----------------
 with tabs[1]:
     st.subheader("برنامه امروز")
     today_str = str(date.today())
@@ -132,20 +131,33 @@ with tabs[1]:
     if not habits_data:
         st.warning("هنوز عادتی ثبت نکرده‌اید. از تب 'عادت‌ها' اضافه کنید.")
     else:
-        st.write("عادت‌های انجام‌شده امروز را علامت بزنید:")
-        total_score = 0
+        st.write("درصد انجام هر عادت را مشخص کنید:")
+        
+        total_weighted_score = 0
         total_possible_weight = sum(habits_data.values())
         
         for h, weight in habits_data.items():
-            chk = st.checkbox(f"{h} (ارزش: {weight}٪)", key=f"chk_{today_str}_{h}")
-            if chk:
-                total_score += weight
+            st.markdown(f"**{h}** (سهم کل: {weight}٪)")
+            # اسلایدر درصد انجام از ۰ تا ۱۰۰
+            completion_pct = st.slider(
+                f"میزان انجام {h}",
+                min_value=0,
+                max_value=100,
+                value=0,
+                step=5,
+                key=f"slider_{today_str}_{h}",
+                label_visibility="collapsed"
+            )
+            # محاسبه سهم این درصد در کل عملکرد
+            weighted_val = (completion_pct / 100) * weight
+            total_weighted_score += weighted_val
+            st.caption(f"امتیاز کسب‌شده: {weighted_val:.1f}٪ از {weight}٪")
+            st.markdown("---")
         
-        calc_pct = int((total_score / total_possible_weight) * 100) if total_possible_weight > 0 else 0
+        calc_pct = int((total_weighted_score / total_possible_weight) * 100) if total_possible_weight > 0 else 0
         
-        st.markdown("---")
         st.progress(calc_pct / 100)
-        st.write(f"مجموع امتیاز امروز: **{calc_pct}%**")
+        st.subheader(f"مجموع کل عملکرد امروز: **{calc_pct}%**")
         
         if st.button("ذخیره عملکرد امروز"):
             records[today_str] = {"percent": calc_pct}
@@ -161,7 +173,7 @@ with tabs[2]:
     with col_a:
         new_h = st.text_input("نام عادت جدید:")
     with col_b:
-        new_w = st.number_input("ارزش/وزن عادت (درصد):", min_value=5, max_value=100, value=20, step=5)
+        new_w = st.number_input("ارزش/وزن عادت در کل روز (درصد):", min_value=5, max_value=100, value=20, step=5)
         
     if st.button("افزودن عادت"):
         if new_h and new_h not in habits_data:
