@@ -579,12 +579,7 @@ else:
                 st.success("هدف جدید ساخته شد.")
                 st.rerun()
 
-    # 6. Growth (نمودار و تحلیل‌های میانگین)
-    elif page == "📈 روند رشد":
-        st.header("📈 روند رشد و تحلیل میانگین‌ها")
-        records = get_records(uid)
-        if records:
-                # 6. Growth (نمودار و تحلیل‌های میانگین)
+        # 6. Growth
     elif page == "📈 روند رشد":
         st.header("📈 روند رشد و تحلیل میانگین‌ها")
         records = get_records(uid)
@@ -599,7 +594,6 @@ else:
             ]
             df = pd.DataFrame(data).sort_values("تاریخ")
 
-            # محاسبات میانگین
             avg_all = round(df["عملکرد (%)"].mean(), 1)
             recent_30_avg = round(df.tail(30)["عملکرد (%)"].mean(), 1)
 
@@ -611,4 +605,6 @@ else:
                 df, x="تاریخ", y="عملکرد (%)", hover_data=["وضعیت"], markers=True
             )
             st.plotly_chart(fig, use_container_width=True)
-    
+        else:
+            st.info("هنوز هیچ داده‌ای برای نمایش نمودار ثبت نشده است.")
+            
