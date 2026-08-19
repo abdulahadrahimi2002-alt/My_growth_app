@@ -53,6 +53,14 @@ st.markdown(
         color: #1e1b4b;
         font-weight: bold;
     }
+    .smart-card {
+        background-color: #ffffff;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        margin-bottom: 15px;
+    }
     </style>
 """,
     unsafe_allow_html=True,
@@ -84,41 +92,51 @@ def create_gauge_chart(percent, title_text="میزان رشد امروز"):
     return fig
 
 
-def create_modern_line_chart(df, x_col, y_col, title="روند تغییرات"):
-    """ساخت نمودار خطی مدرن با افکت سایه و استایل سفارشی"""
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=df[x_col],
-            y=df[y_col],
-            mode="lines+markers",
-            name=title,
-            line=dict(color="#6366f1", width=3, shape="spline"),
-            marker=dict(
-                size=8,
-                color="#4f46e5",
-                line=dict(width=2, color="#ffffff"),
-            ),
-            fill="tozeroy",
-            fillcolor="rgba(99, 102, 241, 0.1)",
-            hovertemplate="<b>%{x}</b><br>عملکرد: %{y}%<extra></extra>",
-        )
+def get_performance_color(score):
+    """تعیین رنگ میله بر اساس درصد عملکرد"""
+    if score >= 80:
+        return "#22c55e"  # سبز قوی
+    elif score >= 60:
+        return "#84cc16"  # سبز روشن / متوسط بالا
+    elif score >= 45:
+        return "#f59e0b"  # زرد/نارنجی متوسط
+    else:
+        return "#ef4444"  # سرخ ضعیف
+
+
+def create_colored_bar_chart(df, title="📈 روند رشد میله‌ای روزانه"):
+    """ساخت نمودار میله‌ای با رنگ‌بندی داینامیک براساس فیصدی"""
+    colors = [get_performance_color(p) for p in df["Performance (%)"]]
+
+    fig = go.Figure(
+        data=[
+            go.Bar(
+                x=df["X_Label"],
+                y=df["Performance (%)"],
+                marker_color=colors,
+                text=df["Performance (%)"].astype(str) + "%",
+                textposition="auto",
+                hovertemplate="<b>%{x}</b><br>عملکرد: %{y}%<extra></extra>",
+            )
+        ]
     )
+
     fig.update_layout(
         title={"text": title, "font": {"size": 18, "color": "#1e1b4b"}},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
-            showgrid=True, gridcolor="#f1f5f9", tickfont=dict(color="#64748b")
+            showgrid=False, tickfont=dict(color="#64748b"), title="روزها"
         ),
         yaxis=dict(
             showgrid=True,
             gridcolor="#f1f5f9",
             range=[0, 105],
             tickfont=dict(color="#64748b"),
+            title="فیصدی عملکرد",
         ),
         margin=dict(l=20, r=20, t=40, b=20),
-        height=380,
+        height=400,
     )
     return fig
 
@@ -348,7 +366,7 @@ else:
                 add_goal(uid, g_title, g_desc, g_dl, g_cat)
                 st.rerun()
 
-    # 6. Growth Page
+    # 6. Growth Page (نمودار میله‌ای با رنگ‌های اختصاصی)
     elif page_key == "growth":
         st.header(t["growth"])
         records = get_records(uid)
@@ -357,15 +375,7 @@ else:
             sorted_dates = sorted(records.keys())
             for idx, d_str in enumerate(sorted_dates, 1):
                 p = records[d_str]["percent"]
-                day_label = (
-                    f"روز {idx} ({d_str})"
-                    if curr_lang == "dari"
-                    else (
-                        f"Day {idx} ({d_str})"
-                        if curr_lang == "en"
-                        else f"第{idx}天 ({d_str})"
-                    )
-                )
+                day_label = f"روز {idx} ({d_str})"
                 data.append(
                     {
                         "X_Label": day_label,
@@ -385,13 +395,8 @@ else:
                 hide_index=True,
             )
 
-            # فراخوانی نمودار مدرن جدید
-            fig = create_modern_line_chart(
-                df,
-                x_col="X_Label",
-                y_col="Performance (%)",
-                title="📈 روند رشد روزانه",
-            )
+            # فراخوانی نمودار میله‌ای با رنگ‌بندی داینامیک
+            fig = create_colored_bar_chart(df)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هیچ داده‌ای موجود نیست.")
@@ -423,28 +428,77 @@ else:
             else:
                 st.info("🔒 **قهرمان رشد**\n\nنیازمند میانگین عملکرد بالای ۸۰٪.")
 
-    # 8. Smart Analysis Page
+    # 8. Smart Analysis Page (ژورنال و تحلیل هوشمند زیبا)
     elif page_key == "smart_analysis":
-        st.header(t["smart_analysis"])
+        st.header("🧠 ژورنال و تحلیل هوشمند عملکرد")
         records = get_records(uid)
+
         if records:
             scores = [v["percent"] for v in records.values()]
             avg_all = round(sum(scores) / len(scores), 1)
-            st.metric("میانگین کل عملکرد", f"{avg_all}%")
+
+            max_date = max(records, key=lambda k: records[k]["percent"])
+            min_date = min(records, key=lambda k: records[k]["percent"])
+            max_score = records[max_date]["percent"]
+            min_score = records[min_date]["percent"]
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("📊 میانگین کل عملکرد", f"{avg_all}%")
+            c2.metric("🌟 بهترین عملکرد", f"{max_score}%", f"تاریخ: {max_date}")
+            c3.metric(
+                "⚠️ نیازمند توجه",
+                f"{min_score}%",
+                f"تاریخ: {min_date}",
+                delta_color="inverse",
+            )
+
+            st.divider()
+
+            st.subheader("📝 خلاصه تحلیلی هوشمند")
 
             if avg_all >= 80:
-                st.success("🔥 **عالی!** روند انضباطی شما بسیار مطلوب است.")
+                st.success(
+                    f"🟢 **روند فوق‌العاده!**\n\nمیانگین عملکرد شما **{avg_all}%**"
+                    " است. شما در بالاترین سطح انضباط فردی قرار دارید. بهترین"
+                    f" روز شما **{max_date}** با ثبت امتیاز **{max_score}%**"
+                    " بوده است. همین مسیر را با قدرت ادامه دهید!"
+                )
             elif avg_all >= 60:
                 st.warning(
-                    "📈 **خوب!** عملکرد شما در سطح متوسط به بالا قرار دارد."
+                    f"🟡 **روند خوب و متوسط به بالا**\n\nمیانگین عملکرد شما"
+                    f" **{avg_all}%** است. تعادل خوبی دارید اما با اندکی"
+                    " تمرکز بیشتر روی عادت‌های کلیدی می‌توانید به بازدهی بالای"
+                    f" ۸۰٪ برسید. کمترین درصد شما **{min_score}%** در تاریخ"
+                    f" **{min_date}** بوده است."
                 )
             else:
                 st.error(
-                    "⚠️ **نیاز به بهبود!** میانگین عملکرد پایین‌تر از حد"
-                    " انتظار است."
+                    f"🔴 **نیازمند تغییر و بازنگری**\n\nمیانگین عملکرد شما"
+                    f" **{avg_all}%** است. پیشنهاد می‌شود اهداف روزانه خود"
+                    " را کوچک‌تر کنید تا ثبت آن‌ها ساده‌تر شود و انگیزه لازم"
+                    " برای تداوم ایجاد گردد."
                 )
+
+            # تحلیل کیفی عادات
+            st.markdown("### 💡 توصیه‌های هوشمند برای بهبود")
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.info(
+                    "**نقاط قوت:**\n* ثبات در ثبت روزانه داده‌ها\n* داشتن"
+                    " انگیزه برای بهبود و تحلیل رشد"
+                )
+            with col_b:
+                st.info(
+                    "**استراتژی پیشنهادی:**\n* تمرکز روی عاداتی که بیشترین"
+                    " وزن (تأثیر) را دارند.\n* ثبت مرتب ساعات خواب و یادداشت‌های"
+                    " روزانه."
+                )
+
         else:
-            st.info("داده‌ای برای تحلیل موجود نیست.")
+            st.info(
+                "هنوز داده‌ای ثبت نشده است. پس از ثبت اولین روز، تحلیل هوشمند"
+                " فعال می‌شود."
+            )
 
     # 9. Journal Page
     elif page_key == "journal":
@@ -481,4 +535,4 @@ else:
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-            
+    
