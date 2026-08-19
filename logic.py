@@ -55,7 +55,7 @@ TRANSLATIONS = {
         "sleep": "😴 Sleep Tracker",
         "settings": "⚙️ Settings",
         "logout": "🚪 Logout",
-        "lang_select": "🌐 Language Select",
+        "lang_select": "🌐 Select Language",
         "streak": "Current Streak",
         "today_perf": "Today Performance",
         "avg_30": "30-Day Avg",
@@ -187,7 +187,7 @@ def create_user(username, email, password, lang="dari"):
         )
         con.commit()
         con.close()
-        return True, "حساب کاربری ساخته شد."
+        return True, "حساب کاربری موفقانه ساخته شد."
     except sqlite3.IntegrityError:
         con.close()
         return False, "این نام کاربری قبلاً ثبت شده است."
@@ -505,4 +505,4 @@ def get_sleep(user_id, s_date):
     res = cur.fetchone()
     con.close()
     return res
-    
+            
