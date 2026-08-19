@@ -176,13 +176,14 @@ init_db()
 
 def create_user(username, email, password, lang="dari"):
     init_db()
+    valid_lang = lang if lang in TRANSLATIONS else "dari"
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     try:
         cur.execute(
             "INSERT INTO users (username, email, password, language) VALUES"
             " (?, ?, ?, ?)",
-            (username, email, hash_password(password), lang),
+            (username, email, hash_password(password), valid_lang),
         )
         con.commit()
         con.close()
@@ -216,9 +217,10 @@ def authenticate(username, password):
 
 def update_user_lang(user_id, lang):
     init_db()
+    valid_lang = lang if lang in TRANSLATIONS else "dari"
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
-    cur.execute("UPDATE users SET language=? WHERE id=?", (lang, user_id))
+    cur.execute("UPDATE users SET language=? WHERE id=?", (valid_lang, user_id))
     con.commit()
     con.close()
 
