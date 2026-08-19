@@ -430,9 +430,7 @@ def update_goal_progress(goal_id, progress):
     init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
-    cur.execute(
-        "UPDATE goals SET progress=? WHERE id=?", (progress, goal_id)
-    )
+    cur.execute("UPDATE goals SET progress=? WHERE id=?", (progress, goal_id))
     con.commit()
     con.close()
 
@@ -448,8 +446,7 @@ def save_journal(user_id, j_date, mood, note):
     row = cur.fetchone()
     if row:
         cur.execute(
-            "UPDATE journal SET mood=?, note=? WHERE id=?",
-            (mood, note, row[0]),
+            "UPDATE journal SET mood=?, note=? WHERE id=?", (mood, note, row[0])
         )
     else:
         cur.execute(
