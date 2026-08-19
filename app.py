@@ -19,6 +19,7 @@ from logic import (
     get_sleep,
     get_status_info,
     get_tasks,
+    init_db,
     save_journal,
     save_record,
     save_sleep,
@@ -26,6 +27,9 @@ from logic import (
     update_goal_progress,
     update_user_lang,
 )
+
+# اطمینان از ساخت تمام جداول SQLite
+init_db()
 
 st.set_page_config(page_title="MyGrowth Pro", page_icon="🚀", layout="wide")
 
@@ -224,11 +228,11 @@ else:
             for d_str, v in records.items():
                 p = v["percent"]
                 if p >= 70:
-                    c = "#28a745"  # سبز
+                    c = "#28a745"
                 elif p >= 50:
-                    c = "#ffc107"  # زرد
+                    c = "#ffc107"
                 else:
-                    c = "#dc3545"  # قرمز
+                    c = "#dc3545"
 
                 data.append(
                     {
@@ -263,7 +267,10 @@ else:
             )
             fig.update_xaxes(type="category")
             fig.update_yaxes(range=[0, 105])
-            st.plotly_chart(fig, use_container_width=True)
+
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هنوز داده‌ای ثبت نشده است.")
 
@@ -347,4 +354,4 @@ else:
         st.write(f"**نام کاربری:** {user['username']}")
         st.write(f"**ایمیل:** {user['email']}")
         st.write(f"**زبان فعال:** {curr_lang.upper()}")
-                    
+                
