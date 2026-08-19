@@ -110,90 +110,22 @@ def verify_password(password, stored):
 
 
 def init_db():
-    con = db()
+    con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            language TEXT DEFAULT 'dari',
-            created_at TEXT NOT NULL
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS habits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            category TEXT DEFAULT 'General',
-            weight REAL DEFAULT 10,
-            active INTEGER DEFAULT 1,
-            created_at TEXT,
-            UNIQUE(user_id, name),
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            record_date TEXT NOT NULL,
-            percent REAL NOT NULL,
-            details TEXT DEFAULT '{}',
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, record_date)
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            task_date TEXT NOT NULL,
-            title TEXT NOT NULL,
-            priority TEXT DEFAULT 'normal',
-            done INTEGER DEFAULT 0,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS goals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            description TEXT DEFAULT '',
-            deadline TEXT,
-            progress INTEGER DEFAULT 0,
-            category TEXT DEFAULT 'General',
-            created_at TEXT DEFAULT '',
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS journal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            note_date TEXT NOT NULL,
-            mood TEXT,
-            note TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, note_date)
-        )
-    """)
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS sleep (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            sleep_date TEXT NOT NULL,
-            hours REAL DEFAULT 0,
-            quality INTEGER DEFAULT 0,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, sleep_date)
-        )
-    """)
+    # سایر جدول‌ها...
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS journal (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        date TEXT,
+        mood TEXT,
+        note TEXT
+    )"""
+    )
     con.commit()
     con.close()
+    
+            
 
 
 def authenticate(username, password):
