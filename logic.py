@@ -197,6 +197,7 @@ def init_db():
 
 
 def authenticate(username, password):
+    init_db()
     con = db()
     con.row_factory = sqlite3.Row
     row = con.execute(
@@ -209,6 +210,7 @@ def authenticate(username, password):
 
 
 def create_user(username, email, password, language="dari"):
+    init_db()
     username_clean = username.strip()
     email_clean = email.strip().lower()
 
@@ -259,6 +261,7 @@ def create_user(username, email, password, language="dari"):
 
 
 def ensure_user_habits(user_id):
+    init_db()
     con = db()
     cur = con.cursor()
     cnt = cur.execute(
@@ -283,6 +286,7 @@ def ensure_user_habits(user_id):
 
 
 def get_records(user_id):
+    init_db()
     con = db()
     rows = con.execute(
         "SELECT record_date,percent,details FROM records WHERE user_id=? ORDER BY"
@@ -301,6 +305,7 @@ def get_records(user_id):
 
 
 def get_habits(user_id):
+    init_db()
     ensure_user_habits(user_id)
     con = db()
     rows = con.execute(
@@ -312,6 +317,7 @@ def get_habits(user_id):
 
 
 def add_habit(user_id, name, category, weight):
+    init_db()
     con = db()
     try:
         now_iso = datetime.now().isoformat()
@@ -329,6 +335,7 @@ def add_habit(user_id, name, category, weight):
 
 
 def save_record(user_id, record_date, percent, details):
+    init_db()
     con = db()
     details_json = json.dumps(details, ensure_ascii=False)
     con.execute(
@@ -361,6 +368,7 @@ def calculate_streak(records):
 
 
 def get_tasks(user_id, task_date):
+    init_db()
     con = db()
     rows = con.execute(
         "SELECT id, title, priority, done FROM tasks WHERE user_id=? AND"
@@ -372,6 +380,7 @@ def get_tasks(user_id, task_date):
 
 
 def add_task(user_id, task_date, title, priority):
+    init_db()
     con = db()
     con.execute(
         "INSERT INTO tasks (user_id, task_date, title, priority) VALUES"
@@ -383,6 +392,7 @@ def add_task(user_id, task_date, title, priority):
 
 
 def toggle_task(task_id, done_status):
+    init_db()
     con = db()
     con.execute(
         "UPDATE tasks SET done=? WHERE id=?", (1 if done_status else 0, task_id)
@@ -392,6 +402,7 @@ def toggle_task(task_id, done_status):
 
 
 def get_goals(user_id):
+    init_db()
     con = db()
     rows = con.execute(
         "SELECT id, title, description, deadline, progress, category FROM"
@@ -403,6 +414,7 @@ def get_goals(user_id):
 
 
 def add_goal(user_id, title, description, deadline, category):
+    init_db()
     con = db()
     now_iso = datetime.now().isoformat()
     con.execute(
@@ -422,6 +434,7 @@ def add_goal(user_id, title, description, deadline, category):
 
 
 def update_goal_progress(goal_id, progress):
+    init_db()
     con = db()
     con.execute("UPDATE goals SET progress=? WHERE id=?", (progress, goal_id))
     con.commit()
@@ -429,6 +442,7 @@ def update_goal_progress(goal_id, progress):
 
 
 def get_journal(user_id, note_date):
+    init_db()
     con = db()
     row = con.execute(
         "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
@@ -439,19 +453,21 @@ def get_journal(user_id, note_date):
 
 
 def save_journal(user_id, note_date, mood, note):
+    init_db()
     con = db()
     con.execute(
         """
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
         ON CONFLICT(user_id, note_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
     """,
-        (user_id, note_date, mood, note),
+        (user_id, str(note_date), mood, note),
     )
     con.commit()
     con.close()
 
 
 def get_sleep(user_id, sleep_date):
+    init_db()
     con = db()
     row = con.execute(
         "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
@@ -462,19 +478,21 @@ def get_sleep(user_id, sleep_date):
 
 
 def save_sleep(user_id, sleep_date, hours, quality):
+    init_db()
     con = db()
     con.execute(
         """
         INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
         ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
     """,
-        (user_id, sleep_date, hours, quality),
+        (user_id, str(sleep_date), hours, quality),
     )
     con.commit()
     con.close()
 
 
 def update_user_lang(user_id, lang):
+    init_db()
     con = db()
     con.execute("UPDATE users SET language=? WHERE id=?", (lang, user_id))
     con.commit()
@@ -482,4 +500,3 @@ def update_user_lang(user_id, lang):
 
 
 init_db()
-        
