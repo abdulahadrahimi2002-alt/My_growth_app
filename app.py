@@ -33,7 +33,7 @@ init_db()
 
 st.set_page_config(page_title="MyGrowth Pro", page_icon="🚀", layout="wide")
 
-# استایل‌دهی سفارشی کارت‌ها و عناصر بصری
+# استایل‌دهی سفارشی
 st.markdown(
     """
     <style>
@@ -52,14 +52,6 @@ st.markdown(
     div[data-testid="stMetricValue"] {
         color: #1e1b4b;
         font-weight: bold;
-    }
-    .smart-card {
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        margin-bottom: 15px;
     }
     </style>
 """,
@@ -93,19 +85,19 @@ def create_gauge_chart(percent, title_text="میزان رشد امروز"):
 
 
 def get_performance_color(score):
-    """تعیین رنگ میله بر اساس درصد عملکرد"""
+    """تعیین رنگ داینامیک بر اساس درصد عملکرد"""
     if score >= 80:
         return "#22c55e"  # سبز قوی
     elif score >= 60:
-        return "#84cc16"  # سبز روشن / متوسط بالا
+        return "#84cc16"  # سبز روشن
     elif score >= 45:
-        return "#f59e0b"  # زرد/نارنجی متوسط
+        return "#f59e0b"  # زرد / نارنجی
     else:
         return "#ef4444"  # سرخ ضعیف
 
 
-def create_colored_bar_chart(df, title="📈 روند رشد میله‌ای روزانه"):
-    """ساخت نمودار میله‌ای با رنگ‌بندی داینامیک براساس فیصدی"""
+def create_thin_bar_chart(df, title="📈 روند رشد روزانه"):
+    """ساخت نمودار میله‌ای بسیار باریک (شبیه به خط) و متراکم کنار هم"""
     colors = [get_performance_color(p) for p in df["Performance (%)"]]
 
     fig = go.Figure(
@@ -114,8 +106,9 @@ def create_colored_bar_chart(df, title="📈 روند رشد میله‌ای ر�
                 x=df["X_Label"],
                 y=df["Performance (%)"],
                 marker_color=colors,
+                width=0.25,  # بسیار باریک مثل خط
                 text=df["Performance (%)"].astype(str) + "%",
-                textposition="auto",
+                textposition="outside",
                 hovertemplate="<b>%{x}</b><br>عملکرد: %{y}%<extra></extra>",
             )
         ]
@@ -125,18 +118,21 @@ def create_colored_bar_chart(df, title="📈 روند رشد میله‌ای ر�
         title={"text": title, "font": {"size": 18, "color": "#1e1b4b"}},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
+        bargap=0.8,  # ایجاد فاصله و باریک کردن میله‌ها
         xaxis=dict(
-            showgrid=False, tickfont=dict(color="#64748b"), title="روزها"
+            showgrid=False,
+            tickfont=dict(color="#64748b", size=11),
+            title="روزها",
         ),
         yaxis=dict(
             showgrid=True,
             gridcolor="#f1f5f9",
-            range=[0, 105],
+            range=[0, 115],
             tickfont=dict(color="#64748b"),
             title="فیصدی عملکرد",
         ),
         margin=dict(l=20, r=20, t=40, b=20),
-        height=400,
+        height=380,
     )
     return fig
 
@@ -366,7 +362,7 @@ else:
                 add_goal(uid, g_title, g_desc, g_dl, g_cat)
                 st.rerun()
 
-    # 6. Growth Page (نمودار میله‌ای با رنگ‌های اختصاصی)
+    # 6. Growth Page (نمودار میله‌ای باریک)
     elif page_key == "growth":
         st.header(t["growth"])
         records = get_records(uid)
@@ -375,7 +371,7 @@ else:
             sorted_dates = sorted(records.keys())
             for idx, d_str in enumerate(sorted_dates, 1):
                 p = records[d_str]["percent"]
-                day_label = f"روز {idx} ({d_str})"
+                day_label = f"روز {idx}"
                 data.append(
                     {
                         "X_Label": day_label,
@@ -395,8 +391,8 @@ else:
                 hide_index=True,
             )
 
-            # فراخوانی نمودار میله‌ای با رنگ‌بندی داینامیک
-            fig = create_colored_bar_chart(df)
+            # فراخوانی نمودار میله‌ای باریک (خطی)
+            fig = create_thin_bar_chart(df)
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هیچ داده‌ای موجود نیست.")
@@ -428,7 +424,7 @@ else:
             else:
                 st.info("🔒 **قهرمان رشد**\n\nنیازمند میانگین عملکرد بالای ۸۰٪.")
 
-    # 8. Smart Analysis Page (ژورنال و تحلیل هوشمند زیبا)
+    # 8. Smart Analysis Page (ژورنال و تحلیل هوشمند)
     elif page_key == "smart_analysis":
         st.header("🧠 ژورنال و تحلیل هوشمند عملکرد")
         records = get_records(uid)
@@ -444,9 +440,9 @@ else:
 
             c1, c2, c3 = st.columns(3)
             c1.metric("📊 میانگین کل عملکرد", f"{avg_all}%")
-            c2.metric("🌟 بهترین عملکرد", f"{max_score}%", f"تاریخ: {max_date}")
+            c2.metric("🌟 بهترین روز", f"{max_score}%", f"تاریخ: {max_date}")
             c3.metric(
-                "⚠️ نیازمند توجه",
+                "⚠️ ضعیف‌ترین روز",
                 f"{min_score}%",
                 f"تاریخ: {min_date}",
                 delta_color="inverse",
@@ -454,67 +450,75 @@ else:
 
             st.divider()
 
-            st.subheader("📝 خلاصه تحلیلی هوشمند")
+            st.subheader("📖 گزارش ژورنال هوشمند")
 
             if avg_all >= 80:
                 st.success(
-                    f"🟢 **روند فوق‌العاده!**\n\nمیانگین عملکرد شما **{avg_all}%**"
-                    " است. شما در بالاترین سطح انضباط فردی قرار دارید. بهترین"
-                    f" روز شما **{max_date}** با ثبت امتیاز **{max_score}%**"
-                    " بوده است. همین مسیر را با قدرت ادامه دهید!"
+                    f"🟢 **وضعیت: عالی**\n\nمیانگین عملکرد شما **{avg_all}%**"
+                    f" است. بهترین روز شما تاریخ **{max_date}** با امتیاز"
+                    f" **{max_score}%** ثبت شده است. روند انضباطی شما بسار قوی"
+                    " است!"
                 )
             elif avg_all >= 60:
                 st.warning(
-                    f"🟡 **روند خوب و متوسط به بالا**\n\nمیانگین عملکرد شما"
-                    f" **{avg_all}%** است. تعادل خوبی دارید اما با اندکی"
-                    " تمرکز بیشتر روی عادت‌های کلیدی می‌توانید به بازدهی بالای"
-                    f" ۸۰٪ برسید. کمترین درصد شما **{min_score}%** در تاریخ"
-                    f" **{min_date}** بوده است."
+                    f"🟡 **وضعیت: متوسط و رو به رشد**\n\nمیانگین شما"
+                    f" **{avg_all}%** است. کمترین عملکرد مربوط به تاریخ"
+                    f" **{min_date}** با امتیاز **{min_score}%** بوده است. با"
+                    " تمرکز روی عادات روزانه می‌توانید عملکرد را به بالای ۸۰٪"
+                    " برسانید."
                 )
             else:
                 st.error(
-                    f"🔴 **نیازمند تغییر و بازنگری**\n\nمیانگین عملکرد شما"
-                    f" **{avg_all}%** است. پیشنهاد می‌شود اهداف روزانه خود"
-                    " را کوچک‌تر کنید تا ثبت آن‌ها ساده‌تر شود و انگیزه لازم"
-                    " برای تداوم ایجاد گردد."
+                    f"🔴 **وضعیت: نیازمند توجه**\n\nمیانگین عملکرد **{avg_all}%**"
+                    " است. پیشنهاد می‌شود اهداف روزانه را سبک‌تر کنید تا ثبات"
+                    " بیشتری ایجاد شود."
                 )
 
-            # تحلیل کیفی عادات
-            st.markdown("### 💡 توصیه‌های هوشمند برای بهبود")
+            st.subheader("💡 راهکارهای پیشنهادی")
             col_a, col_b = st.columns(2)
             with col_a:
                 st.info(
-                    "**نقاط قوت:**\n* ثبات در ثبت روزانه داده‌ها\n* داشتن"
-                    " انگیزه برای بهبود و تحلیل رشد"
+                    "**نقاط قوت:**\n* تداوم در ثبت اطلاعات\n* آگاهی از روند رشد"
                 )
             with col_b:
                 st.info(
-                    "**استراتژی پیشنهادی:**\n* تمرکز روی عاداتی که بیشترین"
-                    " وزن (تأثیر) را دارند.\n* ثبت مرتب ساعات خواب و یادداشت‌های"
-                    " روزانه."
+                    "**اقدام بعدی:**\n* تمرکز روی عادات اصلی با وزن بالا\n*"
+                    " تنظیم منظم ساعات خواب"
                 )
-
         else:
             st.info(
-                "هنوز داده‌ای ثبت نشده است. پس از ثبت اولین روز، تحلیل هوشمند"
-                " فعال می‌شود."
+                "هنوز داده‌ای ثبت نشده است. پس از ثبت داده‌ها در Daily Record،"
+                " تحلیل هوشمند فعال می‌شود."
             )
 
-    # 9. Journal Page
+    # 9. Journal Page (صفحه یادداشت روزانه)
     elif page_key == "journal":
-        st.header(t["journal"])
-        j_date = st.date_input("Date", date.today())
+        st.header("📝 ژورنال و یادداشت‌های روزانه")
+        j_date = st.date_input("تاریخ یادداشت", date.today())
         curr_j = get_journal(uid, j_date)
-        mood_options = ["😃", "🙂", "😐", "😔", "😡"]
-        saved_mood = curr_j[0] if curr_j else "😐"
-        m_index = (
-            mood_options.index(saved_mood) if saved_mood in mood_options else 2
+        mood_options = [
+            "😃 عالی",
+            "🙂 خوب",
+            "😐 معمولی",
+            "😔 بی انگیزه",
+            "😡 خسته/عصبانی",
+        ]
+        saved_mood = curr_j[0] if curr_j else "😐 معمولی"
+        m_index = 2
+        for idx, m_opt in enumerate(mood_options):
+            if saved_mood in m_opt:
+                m_index = idx
+                break
+
+        mood = st.selectbox("حالت روحی امروز (Mood)", mood_options, index=m_index)
+        note = st.text_area(
+            "یادداشت و احساسات امروز",
+            value=curr_j[1] if curr_j else "",
+            height=150,
         )
-        mood = st.selectbox("Mood", mood_options, index=m_index)
-        note = st.text_area("Note", value=curr_j[1] if curr_j else "")
-        if st.button(t["save"]):
-            save_journal(uid, j_date, mood, note)
-            st.success("ژورنال با موفقیت ذخیره گردید!")
+        if st.button("ذخیره ژورنال"):
+            save_journal(uid, j_date, mood.split()[0], note)
+            st.success("یادداشت ژورنال با موفقیت ذخیره گردید!")
 
     # 10. Sleep Tracker Page
     elif page_key == "sleep":
@@ -535,4 +539,4 @@ else:
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-    
+        
