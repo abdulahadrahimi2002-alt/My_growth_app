@@ -84,41 +84,48 @@ def create_gauge_chart(percent, title_text="میزان رشد امروز"):
     return fig
 
 
-def get_performance_color(score):
-    """تعیین رنگ داینامیک بر اساس درصد عملکرد"""
-    if score >= 80:
-        return "#22c55e"  # سبز قوی
-    elif score >= 60:
-        return "#84cc16"  # سبز روشن
-    elif score >= 45:
-        return "#f59e0b"  # زرد / نارنجی
-    else:
-        return "#ef4444"  # سرخ ضعیف
-
-
 def create_thin_bar_chart(df, title="📈 روند رشد روزانه"):
-    """ساخت نمودار میله‌ای بسیار باریک (شبیه به خط) و متراکم کنار هم"""
-    colors = [get_performance_color(p) for p in df["Performance (%)"]]
+    """نمودار میله‌ای دقیقاً مشابه نمونه اکسل با میله‌های نزدیک به‌هم و راهنمای زیرین"""
+    fig = go.Figure()
 
-    fig = go.Figure(
-        data=[
-            go.Bar(
-                x=df["X_Label"],
-                y=df["Performance (%)"],
-                marker_color=colors,
-                width=0.25,  # بسیار باریک مثل خط
-                text=df["Performance (%)"].astype(str) + "%",
-                textposition="outside",
-                hovertemplate="<b>%{x}</b><br>عملکرد: %{y}%<extra></extra>",
-            )
+    # تعریف سطح‌بندی رنگ‌ها و راهنمای ویژگی‌ها
+    levels = [
+        ("🟢 عالی (۸۰٪ - ۱۰۰٪)", 80, 100, "#22c55e"),
+        ("🟡 خوب / متوسط (۶۰٪ - ۷۹٪)", 60, 79.9, "#84cc16"),
+        ("🟠 متوسط پایین (۴۵٪ - ۵۹٪)", 45, 59.9, "#f59e0b"),
+        ("🔴 ضعیف (۰٪ - ۴۴٪)", 0, 44.9, "#ef4444"),
+    ]
+
+    for label, min_val, max_val, color in levels:
+        sub_df = df[
+            (df["Performance (%)"] >= min_val)
+            & (df["Performance (%)"] <= max_val)
         ]
-    )
+        if not sub_df.empty:
+            fig.add_trace(
+                go.Bar(
+                    x=sub_df["X_Label"],
+                    y=sub_df["Performance (%)"],
+                    name=label,  # راهنمای ویژگی رنگ زیر نمودار
+                    marker_color=color,
+                    hovertemplate="<b>%{x}</b><br>عملکرد: %{y}%<extra></extra>",
+                )
+            )
 
     fig.update_layout(
         title={"text": title, "font": {"size": 18, "color": "#1e1b4b"}},
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        bargap=0.8,  # ایجاد فاصله و باریک کردن میله‌ها
+        bargap=0.08,  # میله‌ها کاملاً نزدیک و کنار هم قرار می‌گیرند
+        bargroupgap=0.0,
+        legend=dict(
+            orientation="h",  # قرارگیری راهنمای رنگ‌ها به صورت افقی در زیر نمودار
+            yanchor="bottom",
+            y=-0.3,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12, color="#334155"),
+        ),
         xaxis=dict(
             showgrid=False,
             tickfont=dict(color="#64748b", size=11),
@@ -127,12 +134,12 @@ def create_thin_bar_chart(df, title="📈 روند رشد روزانه"):
         yaxis=dict(
             showgrid=True,
             gridcolor="#f1f5f9",
-            range=[0, 115],
+            range=[0, 110],
             tickfont=dict(color="#64748b"),
             title="فیصدی عملکرد",
         ),
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=380,
+        margin=dict(l=20, r=20, t=40, b=80),
+        height=420,
     )
     return fig
 
@@ -362,7 +369,7 @@ else:
                 add_goal(uid, g_title, g_desc, g_dl, g_cat)
                 st.rerun()
 
-    # 6. Growth Page (نمودار میله‌ای باریک)
+    # 6. Growth Page (نمودار میله‌ای با میله‌های نزدیک به‌هم و راهنمای زیرین)
     elif page_key == "growth":
         st.header(t["growth"])
         records = get_records(uid)
@@ -391,7 +398,7 @@ else:
                 hide_index=True,
             )
 
-            # فراخوانی نمودار میله‌ای باریک (خطی)
+            # فراخوانی نمودار میله‌ای
             fig = create_thin_bar_chart(df)
             st.plotly_chart(fig, use_container_width=True)
         else:
@@ -424,7 +431,7 @@ else:
             else:
                 st.info("🔒 **قهرمان رشد**\n\nنیازمند میانگین عملکرد بالای ۸۰٪.")
 
-    # 8. Smart Analysis Page (ژورنال و تحلیل هوشمند)
+    # 8. Smart Analysis Page (تحلیل هوشمند)
     elif page_key == "smart_analysis":
         st.header("🧠 ژورنال و تحلیل هوشمند عملکرد")
         records = get_records(uid)
@@ -450,7 +457,7 @@ else:
 
             st.divider()
 
-            st.subheader("📖 گزارش ژورنال هوشمند")
+            st.subheader("📖 گزارش تحلیلی")
 
             if avg_all >= 80:
                 st.success(
@@ -539,4 +546,4 @@ else:
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-        
+            
