@@ -216,7 +216,7 @@ else:
                 st.success("هدف ایجاد شد.")
                 st.rerun()
 
-        elif page == t["growth"]:
+    elif page == t["growth"]:
         st.header(t["growth"])
         records = get_records(uid)
         if records:
@@ -253,4 +253,85 @@ else:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هنوز داده‌ای ثبت نشده است.")
+
+    elif page == t["achievements"]:
+        st.header(t["achievements"])
+        records = get_records(uid)
+        streak = calculate_streak(records)
+        st.write(
+            f"**مدال اولین ثبت:** {'✅' if len(records) >= 1 else '❌'} (حداقل ۱"
+            " روز ثبت)"
+        )
+        st.write(
+            f"**تداوم ۷ روزه:** {'✅' if streak >= 7 else '❌'} (۷ روز پشت سر"
+            " هم)"
+        )
+        st.write(
+            f"**استاد ۳۰ روزه:** {'✅' if streak >= 30 else '❌'} (۳۰ روز پشت"
+            " سر هم)"
+        )
+
+    elif page == t["smart_analysis"]:
+        st.header(t["smart_analysis"])
+        records = get_records(uid)
+        if records:
+            avg_all = round(
+                sum([v["percent"] for v in records.values()]) / len(records), 1
+            )
+            overall_status = get_status_info(avg_all, curr_lang)
+            st.info(
+                f"📊 میانگین کل عملکرد شما: **{avg_all}%** | وضعیت کلی:"
+                f" **{overall_status}**"
+            )
+            if avg_all >= 85:
+                st.success("🎉 **عملکرد شما فوق‌العاده است!**")
+            elif avg_all >= 70:
+                st.success("👍 **وضعیت خوبی دارید.**")
+            elif avg_all >= 50:
+                st.warning("⚠️ **عملکرد شما متوسط است.**")
+            else:
+                st.error("🔴 **عملکرد نیاز به بهبود جدی دارد.**")
+        else:
+            st.info("داده‌ای برای تحلیل وجود ندارد.")
+
+    elif page == t["journal"]:
+        st.header(t["journal"])
+        j_date = st.date_input("تاریخ", date.today())
+        curr_j = get_journal(uid, j_date)
+        mood_options = [
+            "😃 عالی / Excellent",
+            "🙂 خوب / Good",
+            "😐 معمولی / Normal",
+            "😔 غمگین / Sad",
+            "😡 عصبانی / Angry",
+        ]
+        mood = st.selectbox(
+            "حالت روحی / Mood",
+            mood_options,
+            index=0 if not curr_j else 0,
+        )
+        note = st.text_area("یادداشت روزانه / Note", value=curr_j[1] if curr_j else "")
+        if st.button(t["save"]):
+            save_journal(uid, j_date, mood, note)
+            st.success("ژورنال با موفقیت ذخیره شد!")
+
+    elif page == t["sleep"]:
+        st.header(t["sleep"])
+        s_date = st.date_input("تاریخ", date.today())
+        curr_s = get_sleep(uid, s_date)
+        hours = st.number_input(
+            "ساعات خواب", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5
+        )
+        quality = st.slider(
+            "کیفیت خواب (۱ تا ۱۰)", 1, 10, curr_s[1] if curr_s else 7
+        )
+        if st.button(t["save"]):
+            save_sleep(uid, s_date, hours, quality)
+            st.success("اطلاعات خواب ذخیره شد!")
+
+    elif page == t["settings"]:
+        st.header(t["settings"])
+        st.write(f"**نام کاربری:** {user['username']}")
+        st.write(f"**ایمیل:** {user['email']}")
+        st.write(f"**زبان فعال:** {curr_lang.upper()}")
             
