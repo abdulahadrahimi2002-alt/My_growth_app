@@ -216,7 +216,7 @@ else:
                 st.success("هدف ایجاد شد.")
                 st.rerun()
 
-            elif page == t["growth"]:
+    elif page == t["growth"]:
         st.header(t["growth"])
         records = get_records(uid)
         if records:
@@ -248,20 +248,16 @@ else:
                 markers=True,
                 title="نمودار روند رشد",
             )
-
             fig.update_traces(
                 textposition="top center",
                 line=dict(width=3, color="#0068C9"),
                 marker=dict(size=12, color=df["Color"]),
             )
-
             fig.update_xaxes(type="category")
             fig.update_yaxes(range=[0, 105])
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هنوز داده‌ای ثبت نشده است.")
-            
-            
 
     elif page == t["achievements"]:
         st.header(t["achievements"])
@@ -343,4 +339,3 @@ else:
         st.write(f"**نام کاربری:** {user['username']}")
         st.write(f"**ایمیل:** {user['email']}")
         st.write(f"**زبان فعال:** {curr_lang.upper()}")
-            
