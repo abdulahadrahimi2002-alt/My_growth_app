@@ -360,6 +360,7 @@ def update_goal_progress(goal_id, progress):
 
 
 def save_journal(user_id, j_date, mood, note):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -383,6 +384,7 @@ def save_journal(user_id, j_date, mood, note):
 
 
 def get_journal(user_id, j_date):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -395,6 +397,7 @@ def get_journal(user_id, j_date):
 
 
 def save_sleep(user_id, s_date, hours, quality):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -417,6 +420,7 @@ def save_sleep(user_id, s_date, hours, quality):
 
 
 def get_sleep(user_id, s_date):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
