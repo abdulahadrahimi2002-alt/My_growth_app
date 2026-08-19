@@ -1,118 +1,110 @@
 import hashlib
 import json
-import secrets
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
-DB_FILE = "mygrowth.db"
+DB_FILE = "growth_app.db"
 
 TRANSLATIONS = {
     "dari": {
-        "title": "🚀 سیستم مدیریت رشد شخصی",
-        "login": "ورود به حساب",
-        "register": "ساخت حساب جدید",
-        "username": "نام کاربری",
-        "password": "رمز عبور",
-        "email": "ایمیل",
-        "login_btn": "ورود",
-        "reg_btn": "ثبت‌نام",
-        "logout": "🚪 خروج از حساب",
-        "lang_select": "🌐 تغییر زبان / Language",
-        "dashboard": "🏠 داشبورد",
+        "dashboard": "📊 داشبورد",
         "daily_record": "📅 ثبت امروز",
-        "habits": "🔁 مدیریت عادت‌ها",
-        "tasks": "📝 لیست کارها",
+        "habits": "🛠️ مدیریت عادت‌ها",
+        "tasks": "📋 لیست کارها",
         "goals": "🎯 اهداف",
         "growth": "📈 روند رشد",
         "achievements": "🏆 دستاوردها",
         "smart_analysis": "🧠 تحلیل هوشمند",
-        "journal": "🙂 ژورنال روزانه",
+        "journal": "😐 ژورنال روزانه",
         "sleep": "😴 پایش خواب",
         "settings": "⚙️ تنظیمات",
-        "streak": "تداوم فعلی",
+        "logout": "🚪 خروج از حساب",
+        "lang_select": "🌐 Language / تغییر زبان",
+        "streak": "تداوم ثبت (روز)",
         "today_perf": "عملکرد امروز",
         "avg_30": "میانگین ۳۰ روز",
-        "status": "ارزیابی وضعیت",
-        "save": "💾 ذخیره",
-        "excellent": "🟢 عالی",
-        "good": "🔵 خوب",
-        "medium": "🟡 متوسط",
-        "poor": "🔴 ضعیف",
+        "status": "وضعیت",
+        "save": "💾 ذخیره‌سازی",
     },
     "en": {
-        "title": "🚀 Personal Growth System",
-        "login": "Login",
-        "register": "Register",
-        "username": "Username",
-        "password": "Password",
-        "email": "Email",
-        "login_btn": "Login",
-        "reg_btn": "Sign Up",
-        "logout": "🚪 Logout",
-        "lang_select": "🌐 Language / تغییر زبان",
-        "dashboard": "🏠 Dashboard",
+        "dashboard": "📊 Dashboard",
         "daily_record": "📅 Daily Record",
-        "habits": "🔁 Habits Management",
-        "tasks": "📝 Tasks List",
+        "habits": "🛠️ Manage Habits",
+        "tasks": "📋 Tasks",
         "goals": "🎯 Goals",
-        "growth": "📈 Growth Chart",
+        "growth": "📈 Growth Trend",
         "achievements": "🏆 Achievements",
         "smart_analysis": "🧠 Smart Analysis",
-        "journal": "🙂 Daily Journal",
+        "journal": "😐 Daily Journal",
         "sleep": "😴 Sleep Tracker",
         "settings": "⚙️ Settings",
+        "logout": "🚪 Logout",
+        "lang_select": "🌐 Language Select",
         "streak": "Current Streak",
-        "today_perf": "Today's Performance",
-        "avg_30": "30-Day Average",
-        "status": "Status Evaluation",
-        "save": "💾 Save",
-        "excellent": "🟢 Excellent",
-        "good": "🔵 Good",
-        "medium": "🟡 Medium",
-        "poor": "🔴 Poor",
+        "today_perf": "Today Performance",
+        "avg_30": "30-Day Avg",
+        "status": "Status",
+        "save": "💾 Save Record",
     },
 }
 
 
-def get_status_info(percent, lang="dari"):
-    t = TRANSLATIONS.get(lang, TRANSLATIONS["dari"])
-    if percent >= 85:
-        return t["excellent"]
-    elif percent >= 70:
-        return t["good"]
-    elif percent >= 50:
-        return t["medium"]
-    else:
-        return t["poor"]
-
-
-def db():
-    con = sqlite3.connect(DB_FILE)
-    con.execute("PRAGMA foreign_keys = ON")
-    return con
-
-
 def hash_password(password):
-    salt = secrets.token_bytes(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 210_000)
-    return salt.hex() + ":" + digest.hex()
-
-
-def verify_password(password, stored):
-    try:
-        salt_hex, digest_hex = stored.split(":")
-        digest = hashlib.pbkdf2_hmac(
-            "sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), 210_000
-        )
-        return secrets.compare_digest(digest.hex(), digest_hex)
-    except Exception:
-        return False
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def init_db():
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
-    # سایر جدول‌ها...
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        email TEXT,
+        password TEXT,
+        language TEXT DEFAULT 'dari'
+    )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS habits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        name TEXT,
+        category TEXT,
+        weight INTEGER,
+        active INTEGER DEFAULT 1
+    )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        date TEXT,
+        percent REAL,
+        details TEXT
+    )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        date TEXT,
+        title TEXT,
+        priority TEXT,
+        completed INTEGER DEFAULT 0
+    )"""
+    )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        title TEXT,
+        description TEXT,
+        deadline TEXT,
+        progress INTEGER DEFAULT 0,
+        category TEXT
+    )"""
+    )
     cur.execute(
         """CREATE TABLE IF NOT EXISTS journal (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,313 +114,316 @@ def init_db():
         note TEXT
     )"""
     )
+    cur.execute(
+        """CREATE TABLE IF NOT EXISTS sleep (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        date TEXT,
+        hours REAL,
+        quality INTEGER
+    )"""
+    )
     con.commit()
     con.close()
-    
-            
+
+
+init_db()
+
+
+def create_user(username, email, password):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+            (username, email, hash_password(password)),
+        )
+        con.commit()
+        con.close()
+        return True, "حساب کاربری با موفقیت ساخته شد."
+    except sqlite3.IntegrityError:
+        con.close()
+        return False, "این نام کاربری قبلاً ثبت شده است."
 
 
 def authenticate(username, password):
-    init_db()
-    con = db()
-    con.row_factory = sqlite3.Row
-    row = con.execute(
-        "SELECT * FROM users WHERE LOWER(username)=LOWER(?)", (username.strip(),)
-    ).fetchone()
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id, username, email, language FROM users WHERE username=? AND"
+        " password=?",
+        (username, hash_password(password)),
+    )
+    user = cur.fetchone()
     con.close()
-    if row and verify_password(password, row["password_hash"]):
-        return dict(row)
+    if user:
+        return {
+            "id": user[0],
+            "username": user[1],
+            "email": user[2],
+            "language": user[3],
+        }
     return None
 
 
-def create_user(username, email, password, language="dari"):
-    init_db()
-    username_clean = username.strip()
-    email_clean = email.strip().lower()
-
-    if not username_clean or not email_clean or not password:
-        return False, "لطفاً تمامی فیلدها را پر کنید / Please fill all fields."
-
-    con = db()
+def update_user_lang(user_id, lang):
+    con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
-
-    existing = cur.execute(
-        "SELECT id FROM users WHERE LOWER(username)=? OR LOWER(email)=?",
-        (username_clean.lower(), email_clean),
-    ).fetchone()
-
-    if existing:
-        con.close()
-        return False, "این نام کاربری یا ایمیل قبلاً ثبت شده است."
-
-    try:
-        now_iso = datetime.now().isoformat()
-        cur.execute(
-            "INSERT INTO users (username,email,password_hash,language,created_at)"
-            " VALUES(?,?,?,?,?)",
-            (username_clean, email_clean, hash_password(password), language, now_iso),
-        )
-        user_id = cur.lastrowid
-
-        default_habits = [
-            ("مطالعه / Reading", "یادگیری", 30),
-            ("ورزش / Workout", "سلامت", 30),
-            ("مطالعه چینی / Chinese", "یادگیری", 20),
-            ("کدنویسی پایتون / Python", "مهارت", 20),
-        ]
-        for name, category, weight in default_habits:
-            cur.execute(
-                "INSERT INTO habits (user_id,name,category,weight,created_at)"
-                " VALUES(?,?,?,?,?)",
-                (user_id, name, category, weight, now_iso),
-            )
-
-        con.commit()
-        return True, "حساب با موفقیت ساخته شد!"
-    except Exception as e:
-        con.rollback()
-        return False, f"خطا: {str(e)}"
-    finally:
-        con.close()
+    cur.execute("UPDATE users SET language=? WHERE id=?", (lang, user_id))
+    con.commit()
+    con.close()
 
 
 def ensure_user_habits(user_id):
-    init_db()
-    con = db()
+    con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
-    cnt = cur.execute(
-        "SELECT COUNT(*) FROM habits WHERE user_id=?", (user_id,)
-    ).fetchone()[0]
-    if cnt == 0:
-        now_iso = datetime.now().isoformat()
-        default_habits = [
-            ("مطالعه / Reading", "یادگیری", 30),
-            ("ورزش / Workout", "سلامت", 30),
-            ("مطالعه چینی / Chinese", "یادگیری", 20),
-            ("کدنویسی پایتون / Python", "مهارت", 20),
+    cur.execute("SELECT COUNT(*) FROM habits WHERE user_id=?", (user_id,))
+    if cur.fetchone()[0] == 0:
+        defaults = [
+            ("ورزش", "سلامت", 25),
+            ("مطالعه انگلیسی", "یادگیری", 25),
+            ("مطالعه چینی", "یادگیری", 25),
+            ("برنامه‌نویسی پایتون", "مهارت", 25),
         ]
-        for name, category, weight in default_habits:
+        for name, cat, w in defaults:
             cur.execute(
-                "INSERT INTO habits (user_id,name,category,weight,created_at)"
-                " VALUES(?,?,?,?,?)",
-                (user_id, name, category, weight, now_iso),
+                "INSERT INTO habits (user_id, name, category, weight) VALUES"
+                " (?, ?, ?, ?)",
+                (user_id, name, cat, w),
             )
         con.commit()
+    con.close()
+
+
+def get_habits(user_id):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id, name, category, weight, active FROM habits WHERE user_id=?"
+        " AND active=1",
+        (user_id,),
+    )
+    res = cur.fetchall()
+    con.close()
+    return res
+
+
+def add_habit(user_id, name, cat, weight):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO habits (user_id, name, category, weight) VALUES (?, ?,"
+        " ?, ?)",
+        (user_id, name, cat, weight),
+    )
+    con.commit()
+    con.close()
+    return True
+
+
+def save_record(user_id, d_str, percent, details):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    details_json = json.dumps(details, ensure_ascii=False)
+    cur.execute(
+        "SELECT id FROM records WHERE user_id=? AND date=?", (user_id, d_str)
+    )
+    row = cur.fetchone()
+    if row:
+        cur.execute(
+            "UPDATE records SET percent=?, details=? WHERE id=?",
+            (percent, details_json, row[0]),
+        )
+    else:
+        cur.execute(
+            "INSERT INTO records (user_id, date, percent, details) VALUES (?, ?,"
+            " ?, ?)",
+            (user_id, d_str, percent, details_json),
+        )
+    con.commit()
     con.close()
 
 
 def get_records(user_id):
-    init_db()
-    con = db()
-    rows = con.execute(
-        "SELECT record_date,percent,details FROM records WHERE user_id=? ORDER BY"
-        " record_date ASC",
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT date, percent, details FROM records WHERE user_id=? ORDER BY"
+        " date ASC",
         (user_id,),
-    ).fetchall()
-    con.close()
-    result = {}
-    for d, percent, details in rows:
-        try:
-            details_dict = json.loads(details or "{}")
-        except Exception:
-            details_dict = {}
-        result[d] = {"percent": percent, "details": details_dict}
-    return result
-
-
-def get_habits(user_id):
-    init_db()
-    ensure_user_habits(user_id)
-    con = db()
-    rows = con.execute(
-        "SELECT id,name,category,weight,active FROM habits WHERE user_id=? ORDER BY id",
-        (user_id,),
-    ).fetchall()
-    con.close()
-    return rows
-
-
-def add_habit(user_id, name, category, weight):
-    init_db()
-    con = db()
-    try:
-        now_iso = datetime.now().isoformat()
-        con.execute(
-            "INSERT INTO habits (user_id,name,category,weight,created_at)"
-            " VALUES(?,?,?,?,?)",
-            (user_id, name.strip(), category.strip(), weight, now_iso),
-        )
-        con.commit()
-        return True
-    except sqlite3.IntegrityError:
-        return False
-    finally:
-        con.close()
-
-
-def save_record(user_id, record_date, percent, details):
-    init_db()
-    con = db()
-    details_json = json.dumps(details, ensure_ascii=False)
-    con.execute(
-        """
-        INSERT INTO records (user_id,record_date,percent,details) VALUES(?,?,?,?)
-        ON CONFLICT(user_id,record_date) DO UPDATE SET percent=excluded.percent, details=excluded.details
-    """,
-        (user_id, record_date, percent, details_json),
     )
-    con.commit()
+    rows = cur.fetchall()
     con.close()
+    records = {}
+    for r in rows:
+        records[r[0]] = {
+            "percent": r[1],
+            "details": json.loads(r[2]) if r[2] else {},
+        }
+    return records
 
 
 def calculate_streak(records):
     if not records:
         return 0
-    dates = sorted([date.fromisoformat(x) for x in records.keys()], reverse=True)
+    dates = sorted([date.fromisoformat(d) for d in records.keys()])
     today = date.today()
-    if dates[0] < today - timedelta(days=1):
+    if today not in dates and (today - timedelta(days=1)) not in dates:
         return 0
-    check = today if dates[0] == today else today - timedelta(days=1)
     streak = 0
-    for d in dates:
-        if d == check:
-            streak += 1
-            check -= timedelta(days=1)
-        elif d < check:
-            break
+    check_date = dates[-1]
+    while check_date in dates:
+        streak += 1
+        check_date -= timedelta(days=1)
     return streak
 
 
-def get_tasks(user_id, task_date):
-    init_db()
-    con = db()
-    rows = con.execute(
-        "SELECT id, title, priority, done FROM tasks WHERE user_id=? AND"
-        " task_date=?",
-        (user_id, str(task_date)),
-    ).fetchall()
+def get_status_info(score, lang="dari"):
+    if score >= 85:
+        return "🟢 عالی" if lang == "dari" else "🟢 Excellent"
+    elif score >= 70:
+        return "🟡 خوب" if lang == "dari" else "🟡 Good"
+    elif score >= 50:
+        return "🟠 متوسط" if lang == "dari" else "🟠 Average"
+    else:
+        return "🔴 ضعیف" if lang == "dari" else "🔴 Poor"
+
+
+def get_tasks(user_id, t_date):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id, title, priority, completed FROM tasks WHERE user_id=? AND"
+        " date=?",
+        (user_id, str(t_date)),
+    )
+    res = cur.fetchall()
     con.close()
-    return rows
+    return res
 
 
-def add_task(user_id, task_date, title, priority):
-    init_db()
-    con = db()
-    con.execute(
-        "INSERT INTO tasks (user_id, task_date, title, priority) VALUES"
-        " (?,?,?,?)",
-        (user_id, str(task_date), title.strip(), priority),
+def add_task(user_id, t_date, title, priority):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO tasks (user_id, date, title, priority) VALUES (?, ?, ?,"
+        " ?)",
+        (user_id, str(t_date), title, priority),
     )
     con.commit()
     con.close()
 
 
-def toggle_task(task_id, done_status):
-    init_db()
-    con = db()
-    con.execute(
-        "UPDATE tasks SET done=? WHERE id=?", (1 if done_status else 0, task_id)
+def toggle_task(task_id, completed):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "UPDATE tasks SET completed=? WHERE id=?", (1 if completed else 0, task_id)
     )
     con.commit()
     con.close()
 
 
 def get_goals(user_id):
-    init_db()
-    con = db()
-    rows = con.execute(
-        "SELECT id, title, description, deadline, progress, category FROM"
-        " goals WHERE user_id=? ORDER BY id DESC",
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id, title, description, deadline, progress, category FROM goals"
+        " WHERE user_id=?",
         (user_id,),
-    ).fetchall()
+    )
+    res = cur.fetchall()
     con.close()
-    return rows
+    return res
 
 
-def add_goal(user_id, title, description, deadline, category):
-    init_db()
-    con = db()
-    now_iso = datetime.now().isoformat()
-    con.execute(
-        "INSERT INTO goals (user_id, title, description, deadline, category,"
-        " created_at) VALUES (?,?,?,?,?,?)",
-        (
-            user_id,
-            title.strip(),
-            description.strip(),
-            str(deadline),
-            category,
-            now_iso,
-        ),
+def add_goal(user_id, title, desc, deadline, category):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "INSERT INTO goals (user_id, title, description, deadline, category)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (user_id, title, desc, str(deadline), category),
     )
     con.commit()
     con.close()
 
 
 def update_goal_progress(goal_id, progress):
-    init_db()
-    con = db()
-    con.execute("UPDATE goals SET progress=? WHERE id=?", (progress, goal_id))
-    con.commit()
-    con.close()
-
-
-def get_journal(user_id, note_date):
-    init_db()
-    con = db()
-    row = con.execute(
-        "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
-        (user_id, str(note_date)),
-    ).fetchone()
-    con.close()
-    return row
-
-
-def save_journal(user_id, note_date, mood, note):
-    init_db()
-    con = db()
-    con.execute(
-        """
-        INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
-        ON CONFLICT(user_id, note_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
-    """,
-        (user_id, str(note_date), mood, note),
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "UPDATE goals SET progress=? WHERE id=?", (progress, goal_id)
     )
     con.commit()
     con.close()
 
 
-def get_sleep(user_id, sleep_date):
-    init_db()
-    con = db()
-    row = con.execute(
-        "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
-        (user_id, str(sleep_date)),
-    ).fetchone()
-    con.close()
-    return row
-
-
-def save_sleep(user_id, sleep_date, hours, quality):
-    init_db()
-    con = db()
-    con.execute(
-        """
-        INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
-        ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
-    """,
-        (user_id, str(sleep_date), hours, quality),
+def save_journal(user_id, j_date, mood, note):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id FROM journal WHERE user_id=? AND date=?",
+        (user_id, str(j_date)),
     )
+    row = cur.fetchone()
+    if row:
+        cur.execute(
+            "UPDATE journal SET mood=?, note=? WHERE id=?",
+            (mood, note, row[0]),
+        )
+    else:
+        cur.execute(
+            "INSERT INTO journal (user_id, date, mood, note) VALUES (?, ?, ?,"
+            " ?)",
+            (user_id, str(j_date), mood, note),
+        )
     con.commit()
     con.close()
 
 
-def update_user_lang(user_id, lang):
-    init_db()
-    con = db()
-    con.execute("UPDATE users SET language=? WHERE id=?", (lang, user_id))
+def get_journal(user_id, j_date):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT mood, note FROM journal WHERE user_id=? AND date=?",
+        (user_id, str(j_date)),
+    )
+    res = cur.fetchone()
+    con.close()
+    return res
+
+
+def save_sleep(user_id, s_date, hours, quality):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT id FROM sleep WHERE user_id=? AND date=?", (user_id, str(s_date))
+    )
+    row = cur.fetchone()
+    if row:
+        cur.execute(
+            "UPDATE sleep SET hours=?, quality=? WHERE id=?",
+            (hours, quality, row[0]),
+        )
+    else:
+        cur.execute(
+            "INSERT INTO sleep (user_id, date, hours, quality) VALUES (?, ?, ?,"
+            " ?)",
+            (user_id, str(s_date), hours, quality),
+        )
     con.commit()
     con.close()
 
 
-init_db()
+def get_sleep(user_id, s_date):
+    con = sqlite3.connect(DB_FILE)
+    cur = con.cursor()
+    cur.execute(
+        "SELECT hours, quality FROM sleep WHERE user_id=? AND date=?",
+        (user_id, str(s_date)),
+    )
+    res = cur.fetchone()
+    con.close()
+    return res
+    
