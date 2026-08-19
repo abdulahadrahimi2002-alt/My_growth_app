@@ -216,41 +216,7 @@ def init_db():
             UNIQUE(user_id, sleep_date)
         )
     """)
-
     con.commit()
-
-    # Default Admin
-    now_iso = datetime.now().isoformat()
-    admin_exists = cur.execute(
-        "SELECT id FROM users WHERE LOWER(username)='rahimi'"
-    ).fetchone()
-    if not admin_exists:
-        cur.execute(
-            "INSERT INTO users (username,email,password_hash,language,created_at)"
-            " VALUES(?,?,?,?,?)",
-            (
-                "Rahimi",
-                "abdulahad.rahimi2002@gmail.com",
-                hash_password("Rahimi2002"),
-                "dari",
-                now_iso,
-            ),
-        )
-        user_id = cur.lastrowid
-        default_habits = [
-            ("مطالعه / Reading", "یادگیری", 30),
-            ("ورزش / Workout", "سلامت", 30),
-            ("مطالعه چینی / Chinese", "یادگیری", 20),
-            ("کدنویسی پایتون / Python", "مهارت", 20),
-        ]
-        for name, category, weight in default_habits:
-            cur.execute(
-                "INSERT INTO habits (user_id,name,category,weight,created_at)"
-                " VALUES(?,?,?,?,?)",
-                (user_id, name, category, weight, now_iso),
-            )
-        con.commit()
-
     con.close()
 
 
@@ -322,6 +288,31 @@ def create_user(username, email, password, language="dari"):
         con.close()
 
 
+def ensure_user_habits(user_id):
+    """اگر کاربر هیچ عادتی ندارد، عادت‌های پیش‌فرض اضافه می‌شوند"""
+    con = db()
+    cur = con.cursor()
+    cnt = cur.execute(
+        "SELECT COUNT(*) FROM habits WHERE user_id=?", (user_id,)
+    ).fetchone()[0]
+    if cnt == 0:
+        now_iso = datetime.now().isoformat()
+        default_habits = [
+            ("مطالعه / Reading", "یادگیری", 30),
+            ("ورزش / Workout", "سلامت", 30),
+            ("مطالعه چینی / Chinese", "یادگیری", 20),
+            ("کدنویسی پایتون / Python", "مهارت", 20),
+        ]
+        for name, category, weight in default_habits:
+            cur.execute(
+                "INSERT INTO habits (user_id,name,category,weight,created_at)"
+                " VALUES(?,?,?,?,?)",
+                (user_id, name, category, weight, now_iso),
+            )
+        con.commit()
+    con.close()
+
+
 def get_records(user_id):
     con = db()
     rows = con.execute(
@@ -341,6 +332,7 @@ def get_records(user_id):
 
 
 def get_habits(user_id):
+    ensure_user_habits(user_id)
     con = db()
     rows = con.execute(
         "SELECT id,name,category,weight,active FROM habits WHERE user_id=? ORDER BY id",
@@ -469,18 +461,6 @@ def update_goal_progress(goal_id, progress):
 
 def get_journal(user_id, note_date):
     con = db()
-    # ساخت خودکار جدول در صورت نبود برای جلوگیری از خطای OperationalError
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS journal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            note_date TEXT NOT NULL,
-            mood TEXT,
-            note TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, note_date)
-        )
-    """)
     row = con.execute(
         "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
         (user_id, str(note_date)),
@@ -491,17 +471,6 @@ def get_journal(user_id, note_date):
 
 def save_journal(user_id, note_date, mood, note):
     con = db()
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS journal (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            note_date TEXT NOT NULL,
-            mood TEXT,
-            note TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, note_date)
-        )
-    """)
     con.execute(
         """
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
@@ -515,17 +484,6 @@ def save_journal(user_id, note_date, mood, note):
 
 def get_sleep(user_id, sleep_date):
     con = db()
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS sleep (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            sleep_date TEXT NOT NULL,
-            hours REAL DEFAULT 0,
-            quality INTEGER DEFAULT 0,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, sleep_date)
-        )
-    """)
     row = con.execute(
         "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
         (user_id, str(sleep_date)),
@@ -536,17 +494,6 @@ def get_sleep(user_id, sleep_date):
 
 def save_sleep(user_id, sleep_date, hours, quality):
     con = db()
-    con.execute("""
-        CREATE TABLE IF NOT EXISTS sleep (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            sleep_date TEXT NOT NULL,
-            hours REAL DEFAULT 0,
-            quality INTEGER DEFAULT 0,
-            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-            UNIQUE(user_id, sleep_date)
-        )
-    """)
     con.execute(
         """
         INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
@@ -585,6 +532,7 @@ if not st.session_state.user:
                 usr = authenticate(u, p)
                 if usr:
                     st.session_state.user = usr
+                    ensure_user_habits(usr["id"])
                     st.success("ورود موفقیت‌آمیز بود!")
                     st.rerun()
                 else:
@@ -665,4 +613,55 @@ else:
             status_label = get_status_info(today_score, curr_lang)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
-           
+            month_score = round(sum(recent_30) / len(recent_30), 1)
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric(t["streak"], f"🔥 {streak}")
+        col2.metric(t["today_perf"], f"{today_score}%")
+        col3.metric(t["avg_30"], f"{month_score}%")
+        col4.metric(t["status"], status_label)
+
+    # 2. Daily Record
+    elif page == t["daily_record"]:
+        st.header(t["daily_record"])
+        sel_date = st.date_input("Date / تاریخ", date.today())
+        d_str = str(sel_date)
+        habits = get_habits(uid)
+        tot_weight = sum([h[3] for h in habits]) or 1
+
+        existing_record = get_records(uid).get(d_str, {}).get("details", {})
+
+        details = {}
+        total_score = 0
+        for h in habits:
+            init_val = existing_record.get(h[1], 0)
+            val = st.slider(
+                f"{h[1]} ({h[3]}%)", 0, 100, int(init_val), key=f"h_{h[0]}_{d_str}"
+            )
+            details[h[1]] = val
+            total_score += (val * h[3]) / tot_weight
+
+        avg_score = round(total_score, 1)
+        status_label = get_status_info(avg_score, curr_lang)
+
+        c1, c2 = st.columns(2)
+        c1.metric(t["today_perf"], f"{avg_score}%")
+        c2.metric(t["status"], status_label)
+
+        if st.button(t["save"]):
+            save_record(uid, d_str, avg_score, details)
+            st.success("ذخیره شد!")
+
+    # 3. Habits
+    elif page == t["habits"]:
+        st.header(t["habits"])
+        habits = get_habits(uid)
+        if habits:
+            df_h = pd.DataFrame(
+                habits, columns=["ID", "Name", "Category", "Weight (%)", "Active"]
+            )
+            st.dataframe(
+                df_h[["Name", "Category", "Weight (%)"]], use_container_width=True
+            )
+
+        st.subheader("➕ 
