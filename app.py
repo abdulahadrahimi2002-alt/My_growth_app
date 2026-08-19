@@ -54,6 +54,21 @@ st.markdown(
         direction: rtl;
         background-color: #111827;
     }
+
+    /* استایل کارت‌های وضعیت رنگی */
+    .status-badge {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: bold;
+        color: white;
+        display: inline-block;
+        text-align: center;
+        width: 100%;
+    }
+    .badge-excellent { background-color: #10B981; }
+    .badge-good { background-color: #3B82F6; }
+    .badge-medium { background-color: #F59E0B; color: black; }
+    .badge-poor { background-color: #EF4444; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -61,48 +76,48 @@ st.markdown(
 
 
 # ============================================================
-# 2. توابع کمکی و رنگ‌بندی
+# 2. توابع کمکی و استایل رنگ‌ها
 # ============================================================
 
 
-def get_status_label(percent):
+def get_status_info(percent):
     if percent >= 85:
-        return "🌟 عالی"
+        return "🌟 عالی", "badge-excellent", "#10B981"
     elif percent >= 70:
-        return "👍 خوب"
+        return "👍 خوب", "badge-good", "#3B82F6"
     elif percent >= 50:
-        return "😐 متوسط"
+        return "😐 متوسط", "badge-medium", "#F59E0B"
     else:
-        return "⚠️ ضعیف"
+        return "⚠️ ضعیف", "badge-poor", "#EF4444"
 
 
 def style_status(val):
-    """رنگ‌آمیزی سلول‌های وضعیت در جدول"""
+    """رنگ‌آمیزی خانه وضعیت در جدول"""
     if "عالی" in str(val):
         return (
             "background-color: #10B981; color: white; font-weight: bold;"
-            " border-radius: 5px;"
+            " border-radius: 6px;"
         )
     elif "خوب" in str(val):
         return (
             "background-color: #3B82F6; color: white; font-weight: bold;"
-            " border-radius: 5px;"
+            " border-radius: 6px;"
         )
     elif "متوسط" in str(val):
         return (
             "background-color: #F59E0B; color: black; font-weight: bold;"
-            " border-radius: 5px;"
+            " border-radius: 6px;"
         )
     elif "ضعیف" in str(val):
         return (
             "background-color: #EF4444; color: white; font-weight: bold;"
-            " border-radius: 5px;"
+            " border-radius: 6px;"
         )
     return ""
 
 
 # ============================================================
-# 3. پایگاه داده و ایمن‌سازی ساختار
+# 3. پایگاه داده و امنیت
 # ============================================================
 
 
@@ -130,7 +145,6 @@ def verify_password(password, stored):
 
 
 def init_db():
-    """ایجاد جداول در صورت عدم وجود (جلوگیری از خطای SQLite)"""
     con = db()
     cur = con.cursor()
 
@@ -216,7 +230,7 @@ def init_db():
     """)
     con.commit()
 
-    # کاربر پیش‌فرض
+    # ایجاد کاربر پیش‌فرض رحیمی
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute(
         "SELECT id FROM users WHERE LOWER(username)='rahimi'"
@@ -429,14 +443,17 @@ def toggle_task(task_id, done_status):
 
 
 def get_goals(user_id):
-    con = db()
-    rows = con.execute(
-        "SELECT id, title, description, deadline, progress, category FROM goals"
-        " WHERE user_id=? ORDER BY id DESC",
-        (user_id,),
-    ).fetchall()
-    con.close()
-    return rows
+    try:
+        con = db()
+        rows = con.execute(
+            "SELECT id, title, description, deadline, progress, category FROM"
+            " goals WHERE user_id=? ORDER BY id DESC",
+            (user_id,),
+        ).fetchall()
+        con.close()
+        return rows
+    except Exception:
+        return []
 
 
 def add_goal(user_id, title, description, deadline, category):
@@ -466,13 +483,16 @@ def update_goal_progress(goal_id, progress):
 
 
 def get_journal(user_id, note_date):
-    con = db()
-    row = con.execute(
-        "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
-        (user_id, str(note_date)),
-    ).fetchone()
-    con.close()
-    return row
+    try:
+        con = db()
+        row = con.execute(
+            "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
+            (user_id, str(note_date)),
+        ).fetchone()
+        con.close()
+        return row
+    except Exception:
+        return None
 
 
 def save_journal(user_id, note_date, mood, note):
@@ -489,13 +509,16 @@ def save_journal(user_id, note_date, mood, note):
 
 
 def get_sleep(user_id, sleep_date):
-    con = db()
-    row = con.execute(
-        "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
-        (user_id, str(sleep_date)),
-    ).fetchone()
-    con.close()
-    return row
+    try:
+        con = db()
+        row = con.execute(
+            "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
+            (user_id, str(sleep_date)),
+        ).fetchone()
+        con.close()
+        return row
+    except Exception:
+        return None
 
 
 def save_sleep(user_id, sleep_date, hours, quality):
@@ -518,7 +541,7 @@ def save_sleep(user_id, sleep_date, hours, quality):
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# ورود / ثبت‌نام
+# بخش احراز هویت
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
     st.caption("سیستم پیشرفته مدیریت رشد شخصی")
@@ -582,17 +605,17 @@ else:
 
         today_score = 0
         month_score = 0
-        last_status = "ثبت‌نشده"
+        status_label, badge_class, _ = get_status_info(0)
 
         if records:
             today_str = str(date.today())
             if today_str in records:
                 today_score = records[today_str]["percent"]
-                last_status = get_status_label(today_score)
             else:
                 last_record = list(records.values())[-1]
                 today_score = last_record["percent"]
-                last_status = get_status_label(today_score)
+
+            status_label, badge_class, _ = get_status_info(today_score)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
@@ -601,7 +624,11 @@ else:
         col1.metric("تداوم فعلی (Streak)", f"🔥 {streak} روز")
         col2.metric("عملکرد روزانه (امروز)", f"{today_score}%")
         col3.metric("میانگین ۳۰ روز اخیر (ماهانه)", f"{month_score}%")
-        col4.metric("ارزیابی وضعیت", last_status)
+
+        # نمایش کارت وضعیت به صورت کاملاً رنگی
+        with col4:
+            st.markdown("<p style='font-size:14px; color:gray;'>ارزیابی وضعیت</p>", unsafe_allow_html=True)
+            st.markdown(f"<div class='status-badge {badge_class}'>{status_label}</div>", unsafe_allow_html=True)
 
     # 2. Daily Record
     elif page == "📅 ثبت امروز":
@@ -628,11 +655,13 @@ else:
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
-        status = get_status_label(avg_score)
+        status_label, badge_class, _ = get_status_info(avg_score)
 
         c1, c2 = st.columns(2)
         c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
-        c2.metric("ارزیابی وضعیت", status)
+        with c2:
+            st.markdown("<p style='font-size:14px; color:gray;'>ارزیابی وضعیت</p>", unsafe_allow_html=True)
+            st.markdown(f"<div class='status-badge {badge_class}'>{status_label}</div>", unsafe_allow_html=True)
 
         if st.button("💾 ذخیره عملکرد"):
             save_record(uid, d_str, avg_score, details)
@@ -650,39 +679,4 @@ else:
                 df_h[["نام عادت", "دسته‌بندی", "وزن (%)"]], use_container_width=True
             )
 
-        st.subheader("➕ افزودن عادت جدید")
-        h_name = st.text_input("نام عادت")
-        h_cat = st.selectbox("دسته‌بندی", ["سلامت", "یادگیری", "مهارت", "عمومی"])
-        h_weight = st.number_input("وزن (%)", 1, 100, 20)
-        if st.button("افزودن عادت"):
-            if add_habit(uid, h_name, h_cat, h_weight):
-                st.success("عادت جدید اضافه شد.")
-                st.rerun()
-
-        # 4. Tasks
-    elif page == "📝 لیست کارها":
-        st.header("📝 کارهای روزمره (تاریخ‌وار)")
-        t_date = st.date_input("انتخاب تاریخ جهت ثبت یا مشاهده کارها", date.today())
-        tasks = get_tasks(uid, t_date)
-
-        st.subheader(f"📋 لیست کارهای تاریخ: {t_date}")
-        if tasks:
-            for t in tasks:
-                chk = st.checkbox(
-                    f"{t[1]} (اولویت: {t[2]})", value=bool(t[3]), key=f"t_{t[0]}"
-                )
-                if chk != bool(t[3]):
-                    toggle_task(t[0], chk)
-                    st.rerun()
-        else:
-            st.info("کاری برای این تاریخ ثبت نشده است.")
-
-        st.subheader("➕ افزودن کار جدید برای این تاریخ")
-        t_title = st.text_input("عنوان کار")
-        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط", "پایین"])
-        if st.button("افزودن کار"):
-            if t_title:
-                add_task(uid, t_date, t_title, t_prio)
-                st.success("کار اضافه شد.")
-                st.rerun()
-                
+        st.subheader("➕ افزودن عاد
