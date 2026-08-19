@@ -667,7 +667,7 @@ else:
             save_record(uid, d_str, avg_score, details)
             st.success(f"عملکرد تاریخ {d_str} با موفقیت ذخیره شد!")
 
-    # 3. Habits Management
+        # 3. Habits Management
     elif page == "🔁 مدیریت عادت‌ها":
         st.header("🔁 عادت‌های من")
         habits = get_habits(uid)
@@ -679,4 +679,12 @@ else:
                 df_h[["نام عادت", "دسته‌بندی", "وزن (%)"]], use_container_width=True
             )
 
-        st.subheader("➕ افزودن عاد
+        st.subheader("➕ افزودن عادت جدید")
+        h_name = st.text_input("نام عادت")
+        h_cat = st.selectbox("دسته‌بندی", ["سلامت", "یادگیری", "مهارت", "عمومی"])
+        h_weight = st.number_input("وزن (%)", 1, 100, 20)
+        if st.button("افزودن عادت"):
+            if add_habit(uid, h_name, h_cat, h_weight):
+                st.success("عادت جدید اضافه شد.")
+                st.rerun()
+                
