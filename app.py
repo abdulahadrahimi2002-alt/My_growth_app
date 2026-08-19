@@ -57,10 +57,9 @@ if "user" not in st.session_state:
                 if usr:
                     st.session_state.user = usr
                     ensure_user_habits(usr["id"])
-                    st.success("OK")
                     st.rerun()
                 else:
-                    st.error("Error!")
+                    st.error("نام کاربری یا رمز عبور اشتباه است!")
 
     with tab_reg:
         ru = st.text_input(t["username"], key="r_u")
@@ -120,12 +119,13 @@ else:
     page_display = st.sidebar.radio(
         "Menu", [v for k, v in menu_keys], key="nav_menu"
     )
-    page_key = menu_display_to_key[page_display]
+    page_key = menu_display_to_key.get(page_display, "dashboard")
 
     if st.sidebar.button(t["logout"]):
         st.session_state.user = None
         st.rerun()
 
+    # 1. Dashboard Page
     if page_key == "dashboard":
         st.header(t["dashboard"])
         records = get_records(uid)
@@ -148,6 +148,7 @@ else:
         c3.metric(t["avg_30"], f"{month_score}%")
         c4.metric(t["status"], status_label)
 
+    # 2. Daily Record Page
     elif page_key == "daily_record":
         st.header(t["daily_record"])
         sel_date = st.date_input("Date", date.today())
@@ -173,8 +174,9 @@ else:
         c2.metric(t["status"], get_status_info(avg_score, curr_lang))
         if st.button(t["save"]):
             save_record(uid, d_str, avg_score, details)
-            st.success("OK")
+            st.success("ثبت گردید!")
 
+    # 3. Habits Page
     elif page_key == "habits":
         st.header(t["habits"])
         habits = get_habits(uid)
@@ -194,9 +196,10 @@ else:
         h_weight = st.number_input("Weight (%)", 1, 100, 20)
         if st.button("Add"):
             if add_habit(uid, h_name, h_cat, h_weight):
-                st.success("OK")
+                st.success("عادت اضافه شد.")
                 st.rerun()
 
+    # 4. Tasks Page
     elif page_key == "tasks":
         st.header(t["tasks"])
         t_date = st.date_input("Date", date.today())
@@ -218,6 +221,7 @@ else:
                 add_task(uid, t_date, t_title, t_prio)
                 st.rerun()
 
+    # 5. Goals Page
     elif page_key == "goals":
         st.header(t["goals"])
         goals = get_goals(uid)
@@ -239,6 +243,7 @@ else:
                 add_goal(uid, g_title, g_desc, g_dl, g_cat)
                 st.rerun()
 
+    # 6. Growth Page
     elif page_key == "growth":
         st.header(t["growth"])
         records = get_records(uid)
@@ -292,11 +297,42 @@ else:
             )
             fig.update_xaxes(type="category", title="روز / تاریخ")
             fig.update_yaxes(range=[0, 105])
-            fig.update_layout(height=400, margin=dict(l=10, r=10, t=30, b=10))
-            st.plotly_chart(fig, use_container_width=True)
+            # محدودسازی عرض گراف جهت مناسب نگه داشتن فاصله نقاط به حدود ۱.۵ الی ۲ سانتی‌متر
+            fig.update_layout(
+                width=600, height=400, margin=dict(l=10, r=10, t=30, b=10)
+            )
+            st.plotly_chart(fig, use_container_width=False)
         else:
-            st.info("No data available.")
+            st.info("هیچ داده‌ای موجود نیست.")
 
+    # 7. Achievements Page
+    elif page_key == "achievements":
+        st.header(t["achievements"])
+        records = get_records(uid)
+        streak = calculate_streak(records)
+        scores = [v["percent"] for v in records.values()] if records else []
+        avg_score = sum(scores) / len(scores) if scores else 0
+
+        a1, a2, a3 = st.columns(3)
+        with a1:
+            if streak >= 1:
+                st.success("🥉 **شروع مسیر**\n\nاولین روز ثبت موفقانه انجام شد!")
+            else:
+                st.info("🔒 **شروع مسیر**\n\nبرای باز کردن، ۱ روز ثبت کنید.")
+
+        with a2:
+            if streak >= 7:
+                st.success("🥈 **مداوم و منظم**\n\n۷ روز ثبت مداوم!")
+            else:
+                st.info("🔒 **مداوم و منظم**\n\nنیازمند ۷ روز ثبت مداوم.")
+
+        with a3:
+            if avg_score >= 80 and len(scores) >= 3:
+                st.success("🥇 **قهرمان رشد**\n\nکسب میانگین عملکرد بالای ۸۰٪!")
+            else:
+                st.info("🔒 **قهرمان رشد**\n\nنیازمند میانگین عملکرد بالای ۸۰٪.")
+
+    # 8. Smart Analysis Page
     elif page_key == "smart_analysis":
         st.header(t["smart_analysis"])
         records = get_records(uid)
@@ -321,19 +357,25 @@ else:
         else:
             st.info("داده‌ای برای تحلیل موجود نیست.")
 
+    # 9. Journal Page
     elif page_key == "journal":
         st.header(t["journal"])
         j_date = st.date_input("Date", date.today())
         curr_j = get_journal(uid, j_date)
         mood_options = ["😃", "🙂", "😐", "😔", "😡"]
-        mood = st.selectbox("Mood", mood_options, index=0)
-        note = st.text_area(
-            "Note", value=curr_j[1] if curr_j and len(curr_j) > 1 else ""
+        saved_mood = curr_j[0] if curr_j else "😐"
+        m_index = (
+            mood_options.index(saved_mood)
+            if saved_mood in mood_options
+            else 2
         )
+        mood = st.selectbox("Mood", mood_options, index=m_index)
+        note = st.text_area("Note", value=curr_j[1] if curr_j else "")
         if st.button(t["save"]):
             save_journal(uid, j_date, mood, note)
-            st.success("Saved!")
+            st.success("ژورنال با موفقیت ذخیره گردید!")
 
+    # 10. Sleep Tracker Page
     elif page_key == "sleep":
         st.header(t["sleep"])
         s_date = st.date_input("Date", date.today())
@@ -344,11 +386,12 @@ else:
         quality = st.slider("Quality (1-10)", 1, 10, curr_s[1] if curr_s else 7)
         if st.button(t["save"]):
             save_sleep(uid, s_date, hours, quality)
-            st.success("Saved!")
+            st.success("اطلاعات خواب ثبت شد!")
 
+    # 11. Settings Page
     elif page_key == "settings":
         st.header(t["settings"])
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-    
+            
