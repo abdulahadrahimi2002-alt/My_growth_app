@@ -637,7 +637,7 @@ else:
                 st.success("هدف ساخته شد.")
                 st.rerun()
 
-    # 6. Growth Chart
+        # 6. Growth Chart
     elif page == "📈 روند رشد":
         st.header("📈 روند رشد و سوابق")
         records = get_records(uid)
@@ -647,22 +647,19 @@ else:
             for d_str, v in records.items():
                 score = v["percent"]
                 label = get_status_info(score)
-                data.append(
-                    {
-                        "تاریخ": d_str,
-                        "میانگین عملکرد (%)": score,
-                        "وضعیت": label,
-                    }
-                )
+                data.append({
+                    "تاریخ": d_str,
+                    "میانگین عملکرد (%)": score,
+                    "وضعیت": label
+                })
 
             df = pd.DataFrame(data)
 
-            st.dataframe(
-                df.sort_values(by="تاریخ", ascending=False),
-                use_container_width=True,
-                hide_index=True,
-            )
+            st.dataframe(df.sort_values(by="تاریخ", ascending=False), use_container_width=True, hide_index=True)
 
-            fig = px.line(
-                df,
+            fig = px.line(df, x="تاریخ", y="میانگین عملکرد (%)", hover_data=["وضعیت"], markers=True, title="نمودار پیشرفت روزانه")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("هنوز داده‌ای ثبت نشده است.")
+            
           
