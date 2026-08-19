@@ -9,7 +9,7 @@ import plotly.express as px
 import streamlit as st
 
 # ============================================================
-# 1. تنظیمات صفحه و استایل (CSS)
+# 1. تنظیمات صفحه و فونت
 # ============================================================
 
 st.set_page_config(
@@ -54,21 +54,6 @@ st.markdown(
         direction: rtl;
         background-color: #111827;
     }
-
-    /* استایل کارت‌های وضعیت رنگی */
-    .status-badge {
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: bold;
-        color: white;
-        display: inline-block;
-        text-align: center;
-        width: 100%;
-    }
-    .badge-excellent { background-color: #10B981; }
-    .badge-good { background-color: #3B82F6; }
-    .badge-medium { background-color: #F59E0B; color: black; }
-    .badge-poor { background-color: #EF4444; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -76,44 +61,20 @@ st.markdown(
 
 
 # ============================================================
-# 2. توابع کمکی و استایل رنگ‌ها
+# 2. توابع کمکی (استایل ایموجی به‌جای رنگ کل باکس)
 # ============================================================
 
 
 def get_status_info(percent):
+    """بازگرداندن نام وضعیت همراه با ایموجی دایره‌ای رنگی"""
     if percent >= 85:
-        return "🌟 عالی", "badge-excellent", "#10B981"
+        return "🟢 عالی"
     elif percent >= 70:
-        return "👍 خوب", "badge-good", "#3B82F6"
+        return "🔵 خوب"
     elif percent >= 50:
-        return "😐 متوسط", "badge-medium", "#F59E0B"
+        return "🟡 متوسط"
     else:
-        return "⚠️ ضعیف", "badge-poor", "#EF4444"
-
-
-def style_status(val):
-    """رنگ‌آمیزی خانه وضعیت در جدول"""
-    if "عالی" in str(val):
-        return (
-            "background-color: #10B981; color: white; font-weight: bold;"
-            " border-radius: 6px;"
-        )
-    elif "خوب" in str(val):
-        return (
-            "background-color: #3B82F6; color: white; font-weight: bold;"
-            " border-radius: 6px;"
-        )
-    elif "متوسط" in str(val):
-        return (
-            "background-color: #F59E0B; color: black; font-weight: bold;"
-            " border-radius: 6px;"
-        )
-    elif "ضعیف" in str(val):
-        return (
-            "background-color: #EF4444; color: white; font-weight: bold;"
-            " border-radius: 6px;"
-        )
-    return ""
+        return "🔴 ضعیف"
 
 
 # ============================================================
@@ -230,7 +191,7 @@ def init_db():
     """)
     con.commit()
 
-    # ایجاد کاربر پیش‌فرض رحیمی
+    # کاربر رحیمی
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute(
         "SELECT id FROM users WHERE LOWER(username)='rahimi'"
@@ -541,7 +502,6 @@ def save_sleep(user_id, sleep_date, hours, quality):
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# بخش احراز هویت
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
     st.caption("سیستم پیشرفته مدیریت رشد شخصی")
@@ -605,7 +565,7 @@ else:
 
         today_score = 0
         month_score = 0
-        status_label, badge_class, _ = get_status_info(0)
+        status_label = get_status_info(0)
 
         if records:
             today_str = str(date.today())
@@ -615,7 +575,7 @@ else:
                 last_record = list(records.values())[-1]
                 today_score = last_record["percent"]
 
-            status_label, badge_class, _ = get_status_info(today_score)
+            status_label = get_status_info(today_score)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
@@ -624,11 +584,7 @@ else:
         col1.metric("تداوم فعلی (Streak)", f"🔥 {streak} روز")
         col2.metric("عملکرد روزانه (امروز)", f"{today_score}%")
         col3.metric("میانگین ۳۰ روز اخیر (ماهانه)", f"{month_score}%")
-
-        # نمایش کارت وضعیت به صورت کاملاً رنگی
-        with col4:
-            st.markdown("<p style='font-size:14px; color:gray;'>ارزیابی وضعیت</p>", unsafe_allow_html=True)
-            st.markdown(f"<div class='status-badge {badge_class}'>{status_label}</div>", unsafe_allow_html=True)
+        col4.metric("ارزیابی وضعیت", status_label)
 
     # 2. Daily Record
     elif page == "📅 ثبت امروز":
@@ -655,19 +611,17 @@ else:
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
-        status_label, badge_class, _ = get_status_info(avg_score)
+        status_label = get_status_info(avg_score)
 
         c1, c2 = st.columns(2)
         c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
-        with c2:
-            st.markdown("<p style='font-size:14px; color:gray;'>ارزیابی وضعیت</p>", unsafe_allow_html=True)
-            st.markdown(f"<div class='status-badge {badge_class}'>{status_label}</div>", unsafe_allow_html=True)
+        c2.metric("ارزیابی وضعیت", status_label)
 
         if st.button("💾 ذخیره عملکرد"):
             save_record(uid, d_str, avg_score, details)
             st.success(f"عملکرد تاریخ {d_str} با موفقیت ذخیره شد!")
 
-        # 3. Habits Management
+    # 3. Habits Management
     elif page == "🔁 مدیریت عادت‌ها":
         st.header("🔁 عادت‌های من")
         habits = get_habits(uid)
@@ -687,4 +641,41 @@ else:
             if add_habit(uid, h_name, h_cat, h_weight):
                 st.success("عادت جدید اضافه شد.")
                 st.rerun()
-                
+
+    # 4. Tasks
+    elif page == "📝 لیست کارها":
+        st.header("📝 کارهای روزمره (تاریخ‌وار)")
+        t_date = st.date_input("انتخاب تاریخ جهت ثبت یا مشاهده کارها", date.today())
+        tasks = get_tasks(uid, t_date)
+
+        st.subheader(f"📋 لیست کارهای تاریخ: {t_date}")
+        if tasks:
+            for t in tasks:
+                chk = st.checkbox(
+                    f"{t[1]} (اولویت: {t[2]})", value=bool(t[3]), key=f"t_{t[0]}"
+                )
+                if chk != bool(t[3]):
+                    toggle_task(t[0], chk)
+                    st.rerun()
+        else:
+            st.info("کاری برای این تاریخ ثبت نشده است.")
+
+        st.subheader("➕ افزودن کار جدید برای این تاریخ")
+        t_title = st.text_input("عنوان کار")
+        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط", "پایین"])
+        if st.button("افزودن کار"):
+            if t_title:
+                add_task(uid, t_date, t_title, t_prio)
+                st.success("کار اضافه شد.")
+                st.rerun()
+
+    # 5. Goals
+    elif page == "🎯 اهداف":
+        st.header("🎯 اهداف شخصی")
+        goals = get_goals(uid)
+        if goals:
+            for g in goals:
+                st.markdown(f"### {g[1]} ({g[5]})")
+                st.write(f"توضیحات: {g[2]} | ددلاین: {g[3]}")
+                prog = st.slider("درصد پیشرفت", 0, 100, g[4], key=f"g_{g[0]}")
+             
