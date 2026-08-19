@@ -43,7 +43,7 @@ if "user" not in st.session_state:
     )
     st.session_state.temp_lang = lang_map[selected_l]
 
-    t = TRANSLATIONS[st.session_state.temp_lang]
+    t = TRANSLATIONS.get(st.session_state.temp_lang, TRANSLATIONS["dari"])
 
     st.title(t["title"])
     tab_login, tab_reg = st.tabs([t["login"], t["register"]])
@@ -248,7 +248,7 @@ else:
                 hide_index=True,
             )
 
-            # گراف کامل با عرض کامل صفحه
+            # گراف پیوسته بدون فواصل خالی روی محور افقی
             fig = px.line(
                 df,
                 x="Date",
@@ -281,10 +281,29 @@ else:
         st.header(t["smart_analysis"])
         records = get_records(uid)
         if records:
-            avg_all = round(
-                sum([v["percent"] for v in records.values()]) / len(records), 1
-            )
-            st.info(f"Average: {avg_all}%")
+            scores = [v["percent"] for v in records.values()]
+            avg_all = round(sum(scores) / len(scores), 1)
+            st.metric("میانگین کل عملکرد", f"{avg_all}%")
+
+            if avg_all >= 80:
+                st.success(
+                    "🔥 **عالی!** روند انضباطی شما بسیار مطلوب است."
+                    " استمرار در ثبت عادت‌ها کلید موفقیت پایدار است."
+                )
+            elif avg_all >= 60:
+                st.warning(
+                    "📈 **خوب!** عملکرد شما در سطح متوسط به بالا قرار دارد."
+                    " با اندکی تلاش بیشتر در تمرینات روزانه به بازدهی حداکثری"
+                    " خواهید رسید."
+                )
+            else:
+                st.error(
+                    "⚠️ **نیاز به بهبود!** میانگین عملکرد پایین‌تر از حد"
+                    " انتظار است. پیشنهاد می‌شود اهداف روزانه را کوچک‌تر و"
+                    " قابل‌دسترس‌تر کنید."
+                )
+        else:
+            st.info("داده‌ای برای تحلیل موجود نیست.")
 
     elif page == t["journal"]:
         st.header(t["journal"])
@@ -296,7 +315,7 @@ else:
             mood_options,
             index=0,
         )
-        note = st.text_area("Note", value=curr_j[1] if curr_j else "")
+        note = st.text_area("Note", value=curr_j[1] if curr_j and len(curr_j) > 1 else "")
         if st.button(t["save"]):
             save_journal(uid, j_date, mood, note)
             st.success("Saved!")
@@ -318,4 +337,4 @@ else:
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-        
+            
