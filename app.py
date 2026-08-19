@@ -289,7 +289,6 @@ def create_user(username, email, password, language="dari"):
 
 
 def ensure_user_habits(user_id):
-    """اگر کاربر هیچ عادتی ندارد، عادت‌های پیش‌فرض اضافه می‌شوند"""
     con = db()
     cur = con.cursor()
     cnt = cur.execute(
@@ -476,7 +475,7 @@ def save_journal(user_id, note_date, mood, note):
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
         ON CONFLICT(user_id, note_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
     """,
-        (user_id, str(note_date), mood, note),
+        (user_id, note_date, mood, note),
     )
     con.commit()
     con.close()
@@ -561,7 +560,6 @@ else:
 
     st.sidebar.title(f"👤 {user['username']}")
 
-    # Language Switcher
     lang_choice = st.sidebar.selectbox(
         t["lang_select"],
         ["دری (Dari)", "English"],
@@ -664,4 +662,7 @@ else:
                 df_h[["Name", "Category", "Weight (%)"]], use_container_width=True
             )
 
-        st.subheader("➕ 
+        st.subheader("➕ افزودن عادت")
+        h_name = st.text_input("نام عادت")
+        h_cat = st.selectbox(
+          
