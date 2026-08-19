@@ -505,4 +505,4 @@ def get_sleep(user_id, s_date):
     res = cur.fetchone()
     con.close()
     return res
-            
+    
