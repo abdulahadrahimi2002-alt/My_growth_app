@@ -9,7 +9,7 @@ import plotly.express as px
 import streamlit as st
 
 # ============================================================
-# CONFIG & CSS
+# 1. تنظیمات صفحه و استایل (CSS)
 # ============================================================
 
 st.set_page_config(
@@ -61,7 +61,7 @@ st.markdown(
 
 
 # ============================================================
-# HELPER FUNCTIONS
+# 2. توابع کمکی
 # ============================================================
 
 
@@ -77,7 +77,7 @@ def get_status_label(percent):
 
 
 # ============================================================
-# DATABASE & SECURITY
+# 3. پایگاه داده و امنیت
 # ============================================================
 
 
@@ -190,6 +190,7 @@ def init_db():
     """)
     con.commit()
 
+    # کاربر پیش‌فرض
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute(
         "SELECT id FROM users WHERE LOWER(username)='rahimi'"
@@ -225,6 +226,11 @@ def init_db():
 
 
 init_db()
+
+
+# ============================================================
+# 4. توابع مدیریت داده‌ها
+# ============================================================
 
 
 def authenticate(username, password):
@@ -287,11 +293,6 @@ def create_user(username, email, password, language="dari"):
         return False, f"خطا در ساخت حساب: {str(e)}"
     finally:
         con.close()
-
-
-# ============================================================
-# DATA FUNCTIONS
-# ============================================================
 
 
 def get_records(user_id):
@@ -455,7 +456,7 @@ def save_journal(user_id, note_date, mood, note):
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
         ON CONFLICT(user_id, note_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
     """,
-        (user_id, str(note_date), mood, note),
+        (user_id, note_date, mood, note),
     )
     con.commit()
     con.close()
@@ -478,19 +479,20 @@ def save_sleep(user_id, sleep_date, hours, quality):
         INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
         ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
     """,
-        (user_id, str(sleep_date), hours, quality),
+        (user_id, sleep_date, hours, quality),
     )
     con.commit()
     con.close()
 
 
 # ============================================================
-# INTERFACE
+# 5. رابط کاربری (Streamlit UI)
 # ============================================================
 
 if "user" not in st.session_state:
     st.session_state.user = None
 
+# احراز هویت
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
     st.caption("سیستم پیشرفته مدیریت رشد شخصی")
@@ -554,17 +556,17 @@ else:
 
         today_score = 0
         month_score = 0
-        last_status, last_color = "ثبت‌نشده", "#6B7280"
+        last_status = "ثبت‌نشده"
 
         if records:
             today_str = str(date.today())
             if today_str in records:
                 today_score = records[today_str]["percent"]
-                last_status, last_color = get_status_label(today_score)
+                last_status, _ = get_status_label(today_score)
             else:
                 last_record = list(records.values())[-1]
                 today_score = last_record["percent"]
-                last_status, last_color = get_status_label(today_score)
+                last_status, _ = get_status_label(today_score)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
@@ -575,7 +577,7 @@ else:
         col3.metric("میانگین ۳۰ روز اخیر (ماهانه)", f"{month_score}%")
         col4.metric("ارزیابی وضعیت", last_status)
 
-    # 2. Today
+    # 2. Daily Record
     elif page == "📅 ثبت امروز":
         st.header("📅 ثبت عملکرد روزانه")
         sel_date = st.date_input("تاریخ ثبت", date.today())
@@ -600,7 +602,7 @@ else:
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
-        status, color = get_status_label(avg_score)
+        status, _ = get_status_label(avg_score)
 
         c1, c2 = st.columns(2)
         c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
@@ -610,7 +612,7 @@ else:
             save_record(uid, d_str, avg_score, details)
             st.success(f"عملکرد تاریخ {d_str} با موفقیت ذخیره شد!")
 
-    # 3. Habits
+    # 3. Habits Management
     elif page == "🔁 مدیریت عادت‌ها":
         st.header("🔁 عادت‌های من")
         habits = get_habits(uid)
@@ -673,4 +675,4 @@ else:
         st.subheader("➕ ساخت هدف جدید")
         g_title = st.text_input("عنوان هدف")
         g_desc = st.text_area("توضیحات")
-        g_dl = st.date_input("تاریخ ددلاین", date.today() + timedelta(
+        g_dl = st.date_inpu
