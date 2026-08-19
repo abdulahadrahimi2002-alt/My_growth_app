@@ -21,7 +21,7 @@ DB_FILE = "mygrowth.db"
 
 
 # ============================================================
-# 2. توابع کمکی وضعیت (ایموجی ساده)
+# 2. توابع کمکی وضعیت
 # ============================================================
 def get_status_info(percent):
     if percent >= 85:
@@ -35,7 +35,7 @@ def get_status_info(percent):
 
 
 # ============================================================
-# 3. پایگاه داده و امنیت
+# 3. پایگاه داده و امنیت (با قابلیت اصلاح خودکار جداول)
 # ============================================================
 def db():
     con = sqlite3.connect(DB_FILE)
@@ -64,6 +64,7 @@ def init_db():
     con = db()
     cur = con.cursor()
 
+    # ساخت جداول اصلی در صورت عدم وجود
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,7 +119,7 @@ def init_db():
             deadline TEXT,
             progress INTEGER DEFAULT 0,
             category TEXT DEFAULT 'عمومی',
-            created_at TEXT NOT NULL,
+            created_at TEXT DEFAULT '',
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
@@ -144,8 +145,21 @@ def init_db():
             UNIQUE(user_id, sleep_date)
         )
     """)
+
+    # برسی و رفع نقص ستون‌های احتمالی دیتابیس قدیمی
+    try:
+        cur.execute("ALTER TABLE goals ADD COLUMN category TEXT DEFAULT 'عمومی'")
+    except sqlite3.OperationalError:
+        pass
+
+    try:
+        cur.execute("ALTER TABLE goals ADD COLUMN created_at TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
+
     con.commit()
 
+    # کاربر پیش‌فرض
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute(
         "SELECT id FROM users WHERE LOWER(username)='rahimi'"
@@ -637,7 +651,7 @@ else:
                 st.success("هدف ساخته شد.")
                 st.rerun()
 
-        # 6. Growth Chart
+    # 6. Growth Chart
     elif page == "📈 روند رشد":
         st.header("📈 روند رشد و سوابق")
         records = get_records(uid)
@@ -647,19 +661,6 @@ else:
             for d_str, v in records.items():
                 score = v["percent"]
                 label = get_status_info(score)
-                data.append({
-                    "تاریخ": d_str,
-                    "میانگین عملکرد (%)": score,
-                    "وضعیت": label
-                })
-
-            df = pd.DataFrame(data)
-
-            st.dataframe(df.sort_values(by="تاریخ", ascending=False), use_container_width=True, hide_index=True)
-
-            fig = px.line(df, x="تاریخ", y="میانگین عملکرد (%)", hover_data=["وضعیت"], markers=True, title="نمودار پیشرفت روزانه")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("هنوز داده‌ای ثبت نشده است.")
-            
-          
+                data.append(
+                    {
+                        "تاریخ": 
