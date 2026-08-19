@@ -61,23 +61,48 @@ st.markdown(
 
 
 # ============================================================
-# 2. توابع کمکی
+# 2. توابع کمکی و رنگ‌بندی
 # ============================================================
 
 
 def get_status_label(percent):
     if percent >= 85:
-        return "🌟 عالی", "#10B981"
+        return "🌟 عالی"
     elif percent >= 70:
-        return "👍 خوب", "#3B82F6"
+        return "👍 خوب"
     elif percent >= 50:
-        return "😐 متوسط", "#F59E0B"
+        return "😐 متوسط"
     else:
-        return "⚠️ ضعیف", "#EF4444"
+        return "⚠️ ضعیف"
+
+
+def style_status(val):
+    """رنگ‌آمیزی سلول‌های وضعیت در جدول"""
+    if "عالی" in str(val):
+        return (
+            "background-color: #10B981; color: white; font-weight: bold;"
+            " border-radius: 5px;"
+        )
+    elif "خوب" in str(val):
+        return (
+            "background-color: #3B82F6; color: white; font-weight: bold;"
+            " border-radius: 5px;"
+        )
+    elif "متوسط" in str(val):
+        return (
+            "background-color: #F59E0B; color: black; font-weight: bold;"
+            " border-radius: 5px;"
+        )
+    elif "ضعیف" in str(val):
+        return (
+            "background-color: #EF4444; color: white; font-weight: bold;"
+            " border-radius: 5px;"
+        )
+    return ""
 
 
 # ============================================================
-# 3. پایگاه داده و امنیت
+# 3. پایگاه داده و ایمن‌سازی ساختار
 # ============================================================
 
 
@@ -105,6 +130,7 @@ def verify_password(password, stored):
 
 
 def init_db():
+    """ایجاد جداول در صورت عدم وجود (جلوگیری از خطای SQLite)"""
     con = db()
     cur = con.cursor()
 
@@ -492,7 +518,7 @@ def save_sleep(user_id, sleep_date, hours, quality):
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# احراز هویت
+# ورود / ثبت‌نام
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
     st.caption("سیستم پیشرفته مدیریت رشد شخصی")
@@ -562,11 +588,11 @@ else:
             today_str = str(date.today())
             if today_str in records:
                 today_score = records[today_str]["percent"]
-                last_status, _ = get_status_label(today_score)
+                last_status = get_status_label(today_score)
             else:
                 last_record = list(records.values())[-1]
                 today_score = last_record["percent"]
-                last_status, _ = get_status_label(today_score)
+                last_status = get_status_label(today_score)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
@@ -602,7 +628,7 @@ else:
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
-        status, _ = get_status_label(avg_score)
+        status = get_status_label(avg_score)
 
         c1, c2 = st.columns(2)
         c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
@@ -653,26 +679,4 @@ else:
 
         st.subheader("➕ افزودن کار جدید برای این تاریخ")
         t_title = st.text_input("عنوان کار")
-        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط", "پایین"])
-        if st.button("افزودن کار"):
-            if t_title:
-                add_task(uid, t_date, t_title, t_prio)
-                st.success("کار اضافه شد.")
-                st.rerun()
-
-    # 5. Goals
-    elif page == "🎯 اهداف":
-        st.header("🎯 اهداف شخصی")
-        goals = get_goals(uid)
-        for g in goals:
-            st.markdown(f"### {g[1]} ({g[5]})")
-            st.write(f"توضیحات: {g[2]} | ددلاین: {g[3]}")
-            prog = st.slider("درصد پیشرفت", 0, 100, g[4], key=f"g_{g[0]}")
-            if prog != g[4]:
-                update_goal_progress(g[0], prog)
-            st.markdown("---")
-
-        st.subheader("➕ ساخت هدف جدید")
-        g_title = st.text_input("عنوان هدف")
-        g_desc = st.text_area("توضیحات")
-        g_dl = st.date_inpu
+        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط"
