@@ -36,9 +36,6 @@ if "temp_lang" not in st.session_state:
     st.session_state.temp_lang = "dari"
 
 if "user" not in st.session_state:
-    st.session_state.user = None
-
-if not st.session_state.user:
     st.sidebar.title("🌐 Language / زبان")
     lang_map = {"دری (Dari)": "dari", "English": "en", "中文 (Chinese)": "zh"}
     selected_l = st.sidebar.selectbox(
@@ -82,7 +79,7 @@ else:
     user = st.session_state.user
     uid = user["id"]
     curr_lang = user.get("language", "dari")
-    if curr_lang not in ["dari", "en", "zh"]:
+    if curr_lang not in TRANSLATIONS:
         curr_lang = "dari"
     t = TRANSLATIONS[curr_lang]
 
@@ -243,34 +240,32 @@ else:
 
             df = pd.DataFrame(data)
 
-            # نمایش فشرده‌تر نمودار در یک ستون بسیار باریک‌تر
-            col1, col2 = st.columns([1.5, 1])
-            with col1:
-                st.dataframe(
-                    df.sort_values(by="Date", ascending=False)[
-                        ["Date", "Performance (%)", "Status"]
-                    ],
-                    use_container_width=True,
-                    hide_index=True,
-                )
+            st.dataframe(
+                df.sort_values(by="Date", ascending=False)[
+                    ["Date", "Performance (%)", "Status"]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
 
-                fig = px.line(
-                    df,
-                    x="Date",
-                    y="Performance (%)",
-                    text="Performance (%)",
-                    markers=True,
-                    title="Growth Trend",
-                )
-                fig.update_traces(
-                    textposition="top center",
-                    line=dict(width=3, color="#0068C9"),
-                    marker=dict(size=12, color=df["Color"].tolist()),
-                )
-                fig.update_xaxes(type="category")
-                fig.update_yaxes(range=[0, 105])
-                fig.update_layout(height=350, margin=dict(l=10, r=10, t=30, b=10))
-                st.plotly_chart(fig, use_container_width=True)
+            # گراف کامل با عرض کامل صفحه
+            fig = px.line(
+                df,
+                x="Date",
+                y="Performance (%)",
+                text="Performance (%)",
+                markers=True,
+                title="Growth Trend",
+            )
+            fig.update_traces(
+                textposition="top center",
+                line=dict(width=3, color="#0068C9"),
+                marker=dict(size=12, color=df["Color"].tolist()),
+            )
+            fig.update_xaxes(type="category")
+            fig.update_yaxes(range=[0, 105])
+            fig.update_layout(height=400, margin=dict(l=10, r=10, t=30, b=10))
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("No data available.")
 
