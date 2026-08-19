@@ -175,6 +175,7 @@ init_db()
 
 
 def create_user(username, email, password, lang="dari"):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     try:
@@ -192,6 +193,7 @@ def create_user(username, email, password, lang="dari"):
 
 
 def authenticate(username, password):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -202,16 +204,18 @@ def authenticate(username, password):
     user = cur.fetchone()
     con.close()
     if user:
+        lang = user[3] if user[3] in TRANSLATIONS else "dari"
         return {
             "id": user[0],
             "username": user[1],
             "email": user[2],
-            "language": user[3] if user[3] else "dari",
+            "language": lang,
         }
     return None
 
 
 def update_user_lang(user_id, lang):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute("UPDATE users SET language=? WHERE id=?", (lang, user_id))
@@ -220,6 +224,7 @@ def update_user_lang(user_id, lang):
 
 
 def ensure_user_habits(user_id):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute("SELECT COUNT(*) FROM habits WHERE user_id=?", (user_id,))
@@ -241,6 +246,7 @@ def ensure_user_habits(user_id):
 
 
 def get_habits(user_id):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -254,6 +260,7 @@ def get_habits(user_id):
 
 
 def add_habit(user_id, name, cat, weight):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -267,6 +274,7 @@ def add_habit(user_id, name, cat, weight):
 
 
 def save_record(user_id, d_str, percent, details):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     details_json = json.dumps(details, ensure_ascii=False)
@@ -290,6 +298,7 @@ def save_record(user_id, d_str, percent, details):
 
 
 def get_records(user_id):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -351,6 +360,7 @@ def get_status_info(score, lang="dari"):
 
 
 def get_tasks(user_id, t_date):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -364,6 +374,7 @@ def get_tasks(user_id, t_date):
 
 
 def add_task(user_id, t_date, title, priority):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -376,6 +387,7 @@ def add_task(user_id, t_date, title, priority):
 
 
 def toggle_task(task_id, completed):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -386,6 +398,7 @@ def toggle_task(task_id, completed):
 
 
 def get_goals(user_id):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -399,6 +412,7 @@ def get_goals(user_id):
 
 
 def add_goal(user_id, title, desc, deadline, category):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
@@ -411,6 +425,7 @@ def add_goal(user_id, title, desc, deadline, category):
 
 
 def update_goal_progress(goal_id, progress):
+    init_db()
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     cur.execute(
