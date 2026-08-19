@@ -9,7 +9,7 @@ import plotly.express as px
 import streamlit as st
 
 # ============================================================
-# 1. تنظیمات صفحه
+# 1. Page Config
 # ============================================================
 st.set_page_config(
     page_title="MyGrowth Pro",
@@ -19,23 +19,95 @@ st.set_page_config(
 
 DB_FILE = "mygrowth.db"
 
+# ============================================================
+# 2. Translations (دری و انگلیسی)
+# ============================================================
+TRANSLATIONS = {
+    "dari": {
+        "title": "🚀 سیستم مدیریت رشد شخصی",
+        "login": "ورود به حساب",
+        "register": "ساخت حساب جدید",
+        "username": "نام کاربری",
+        "password": "رمز عبور",
+        "email": "ایمیل",
+        "login_btn": "ورود",
+        "reg_btn": "ثبت‌نام",
+        "login_success": "ورود موفقیت‌آمیز بود!",
+        "login_error": "نام کاربری یا رمز عبور اشتباه است.",
+        "logout": "🚪 خروج از حساب",
+        "lang_select": "🌐 تغییر زبان / Language",
+        "dashboard": "🏠 داشبورد",
+        "daily_record": "📅 ثبت امروز",
+        "habits": "🔁 مدیریت عادت‌ها",
+        "tasks": "📝 لیست کارها",
+        "goals": "🎯 اهداف",
+        "growth": "📈 روند رشد",
+        "achievements": "🏆 دستاوردها",
+        "smart_analysis": "🧠 تحلیل هوشمند",
+        "journal": "🙂 ژورنال روزانه",
+        "sleep": "😴 پایش خواب",
+        "settings": "⚙️ تنظیمات",
+        "streak": "تداوم فعلی",
+        "today_perf": "عملکرد امروز",
+        "avg_30": "میانگین ۳۰ روز",
+        "status": "ارزیابی وضعیت",
+        "save": "💾 ذخیره",
+        "excellent": "🟢 عالی",
+        "good": "🔵 خوب",
+        "medium": "🟡 متوسط",
+        "poor": "🔴 ضعیف",
+    },
+    "en": {
+        "title": "🚀 Personal Growth System",
+        "login": "Login",
+        "register": "Register",
+        "username": "Username",
+        "password": "Password",
+        "email": "Email",
+        "login_btn": "Login",
+        "reg_btn": "Sign Up",
+        "login_success": "Login successful!",
+        "login_error": "Invalid username or password.",
+        "logout": "🚪 Logout",
+        "lang_select": "🌐 Language / تغییر زبان",
+        "dashboard": "🏠 Dashboard",
+        "daily_record": "📅 Daily Record",
+        "habits": "🔁 Habits Management",
+        "tasks": "📝 Tasks List",
+        "goals": "🎯 Goals",
+        "growth": "📈 Growth Chart",
+        "achievements": "🏆 Achievements",
+        "smart_analysis": "🧠 Smart Analysis",
+        "journal": "🙂 Daily Journal",
+        "sleep": "😴 Sleep Tracker",
+        "settings": "⚙️ Settings",
+        "streak": "Current Streak",
+        "today_perf": "Today's Performance",
+        "avg_30": "30-Day Average",
+        "status": "Status Evaluation",
+        "save": "💾 Save",
+        "excellent": "🟢 Excellent",
+        "good": "🔵 Good",
+        "medium": "🟡 Medium",
+        "poor": "🔴 Poor",
+    },
+}
 
-# ============================================================
-# 2. توابع کمکی وضعیت
-# ============================================================
-def get_status_info(percent):
+
+def get_status_info(percent, lang="dari"):
+    t = TRANSLATIONS.get(lang, TRANSLATIONS["dari"])
     if percent >= 85:
-        return "🟢 عالی"
+        return t["excellent"]
     elif percent >= 70:
-        return "🔵 خوب"
+        return t["good"]
     elif percent >= 50:
-        return "🟡 متوسط"
+        return t["medium"]
     else:
-        return "🔴 ضعیف"
+        return t["poor"]
 
 
 # ============================================================
-# 3. پایگاه داده و امنیت (با قابلیت اصلاح خودکار جداول)
+# 3. Database & Security
 # ============================================================
 def db():
     con = sqlite3.connect(DB_FILE)
@@ -64,7 +136,6 @@ def init_db():
     con = db()
     cur = con.cursor()
 
-    # ساخت جداول اصلی در صورت عدم وجود
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +151,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
             name TEXT NOT NULL,
-            category TEXT DEFAULT 'عمومی',
+            category TEXT DEFAULT 'General',
             weight REAL DEFAULT 10,
             active INTEGER DEFAULT 1,
             created_at TEXT,
@@ -118,7 +189,7 @@ def init_db():
             description TEXT DEFAULT '',
             deadline TEXT,
             progress INTEGER DEFAULT 0,
-            category TEXT DEFAULT 'عمومی',
+            category TEXT DEFAULT 'General',
             created_at TEXT DEFAULT '',
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )
@@ -146,9 +217,9 @@ def init_db():
         )
     """)
 
-    # برسی و رفع نقص ستون‌های احتمالی دیتابیس قدیمی
+    # Auto-fix column updates
     try:
-        cur.execute("ALTER TABLE goals ADD COLUMN category TEXT DEFAULT 'عمومی'")
+        cur.execute("ALTER TABLE goals ADD COLUMN category TEXT DEFAULT 'General'")
     except sqlite3.OperationalError:
         pass
 
@@ -159,7 +230,7 @@ def init_db():
 
     con.commit()
 
-    # کاربر پیش‌فرض
+    # Default Admin User
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute(
         "SELECT id FROM users WHERE LOWER(username)='rahimi'"
@@ -178,10 +249,10 @@ def init_db():
         )
         user_id = cur.lastrowid
         default_habits = [
-            ("مطالعه", "یادگیری", 30),
-            ("ورزش", "سلامت", 30),
-            ("مطالعه چینی", "یادگیری", 20),
-            ("کدنویسی پایتون", "مهارت", 20),
+            ("مطالعه / Reading", "یادگیری", 30),
+            ("ورزش / Workout", "سلامت", 30),
+            ("مطالعه چینی / Chinese", "یادگیری", 20),
+            ("کدنویسی پایتون / Python", "مهارت", 20),
         ]
         for name, category, weight in default_habits:
             cur.execute(
@@ -198,7 +269,7 @@ init_db()
 
 
 # ============================================================
-# 4. توابع برنامه
+# 4. Helper Functions
 # ============================================================
 def authenticate(username, password):
     con = db()
@@ -217,7 +288,7 @@ def create_user(username, email, password, language="dari"):
     email_clean = email.strip().lower()
 
     if not username_clean or not email_clean or not password:
-        return False, "لطفاً تمامی فیلدها را پر کنید."
+        return False, "لطفاً تمامی فیلدها را پر کنید / Please fill all fields."
 
     con = db()
     cur = con.cursor()
@@ -229,7 +300,11 @@ def create_user(username, email, password, language="dari"):
 
     if existing:
         con.close()
-        return False, "این نام کاربری یا ایمیل قبلاً ثبت شده است."
+        return (
+            False,
+            "این نام کاربری یا ایمیل قبلاً ثبت شده است / User or Email already"
+            " exists.",
+        )
 
     try:
         now_iso = datetime.now().isoformat()
@@ -241,10 +316,10 @@ def create_user(username, email, password, language="dari"):
         user_id = cur.lastrowid
 
         default_habits = [
-            ("مطالعه", "یادگیری", 30),
-            ("ورزش", "سلامت", 30),
-            ("مطالعه چینی", "یادگیری", 20),
-            ("کدنویسی پایتون", "مهارت", 20),
+            ("مطالعه / Reading", "یادگیری", 30),
+            ("ورزش / Workout", "سلامت", 30),
+            ("مطالعه چینی / Chinese", "یادگیری", 20),
+            ("کدنویسی پایتون / Python", "مهارت", 20),
         ]
         for name, category, weight in default_habits:
             cur.execute(
@@ -254,10 +329,10 @@ def create_user(username, email, password, language="dari"):
             )
 
         con.commit()
-        return True, "حساب با موفقیت ساخته شد!"
+        return True, "حساب با موفقیت ساخته شد / Account created successfully!"
     except Exception as e:
         con.rollback()
-        return False, f"خطا: {str(e)}"
+        return False, f"خطا / Error: {str(e)}"
     finally:
         con.close()
 
@@ -273,10 +348,10 @@ def get_records(user_id):
     result = {}
     for d, percent, details in rows:
         try:
-            details = json.loads(details or "{}")
+            details_dict = json.loads(details or "{}")
         except Exception:
-            details = {}
-        result[d] = {"percent": percent, "details": details}
+            details_dict = {}
+        result[d] = {"percent": percent, "details": details_dict}
     return result
 
 
@@ -309,12 +384,13 @@ def add_habit(user_id, name, category, weight):
 
 def save_record(user_id, record_date, percent, details):
     con = db()
+    details_json = json.dumps(details, ensure_ascii=False)
     con.execute(
         """
         INSERT INTO records (user_id,record_date,percent,details) VALUES(?,?,?,?)
         ON CONFLICT(user_id,record_date) DO UPDATE SET percent=excluded.percent, details=excluded.details
     """,
-        (user_id, record_date, percent, json.dumps(details, ensure_ascii=False)),
+        (user_id, record_date, percent, details_json),
     )
     con.commit()
     con.close()
@@ -452,37 +528,44 @@ def save_sleep(user_id, sleep_date, hours, quality):
     con.close()
 
 
+def update_user_lang(user_id, lang):
+    con = db()
+    con.execute("UPDATE users SET language=? WHERE id=?", (lang, user_id))
+    con.commit()
+    con.close()
+
+
 # ============================================================
-# 5. رابط کاربری (Streamlit UI)
+# 5. UI (Streamlit Interface)
 # ============================================================
 
 if "user" not in st.session_state:
     st.session_state.user = None
 
 if not st.session_state.user:
-    st.title("🚀 سیستم مدیریت رشد شخصی")
+    st.title("🚀 سیستم مدیریت رشد شخصی | Growth System")
 
-    tab_login, tab_reg = st.tabs(["ورود به حساب", "ساخت حساب جدید"])
+    tab_login, tab_reg = st.tabs(["ورود | Login", "ثبت‌نام | Register"])
 
     with tab_login:
-        u = st.text_input("نام کاربری", key="l_u")
-        p = st.text_input("رمز عبور", type="password", key="l_p")
-        if st.button("ورود"):
+        u = st.text_input("نام کاربری / Username", key="l_u")
+        p = st.text_input("رمز عبور / Password", type="password", key="l_p")
+        if st.button("ورود / Login"):
             if u and p:
                 usr = authenticate(u, p)
                 if usr:
                     st.session_state.user = usr
-                    st.success("ورود موفقیت‌آمیز بود!")
+                    st.success("ورود موفقیت‌آمیز بود! / Login successful!")
                     st.rerun()
                 else:
                     st.error("نام کاربری یا رمز عبور اشتباه است.")
 
     with tab_reg:
-        ru = st.text_input("نام کاربری جدید", key="r_u")
-        re = st.text_input("ایمیل", key="r_e")
-        rp = st.text_input("رمز عبور جدید", type="password", key="r_p")
+        ru = st.text_input("نام کاربری جدید / Username", key="r_u")
+        re = st.text_input("ایمیل / Email", key="r_e")
+        rp = st.text_input("رمز عبور جدید / Password", type="password", key="r_p")
 
-        if st.button("ثبت‌نام"):
+        if st.button("ثبت‌نام / Register"):
             success, message = create_user(ru, re, rp)
             if success:
                 st.success(message)
@@ -492,36 +575,54 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     uid = user["id"]
+    curr_lang = user.get("language", "dari")
+    if curr_lang not in ["dari", "en"]:
+        curr_lang = "dari"
+
+    t = TRANSLATIONS[curr_lang]
 
     st.sidebar.title(f"👤 {user['username']}")
-    menu = [
-        "🏠 داشبورد",
-        "📅 ثبت امروز",
-        "🔁 مدیریت عادت‌ها",
-        "📝 لیست کارها",
-        "🎯 اهداف",
-        "📈 روند رشد",
-        "🏆 دستاوردها",
-        "🧠 تحلیل هوشمند",
-        "🙂 ژورنال روزانه",
-        "😴 پایش خواب",
-        "⚙️ تنظیمات",
-    ]
-    page = st.sidebar.radio("منو", menu)
 
-    if st.sidebar.button("🚪 خروج از حساب"):
+    # Language Switcher
+    lang_choice = st.sidebar.selectbox(
+        t["lang_select"],
+        ["دری (Dari)", "English"],
+        index=0 if curr_lang == "dari" else 1,
+    )
+    selected_lang_code = "dari" if "دری" in lang_choice else "en"
+    if selected_lang_code != curr_lang:
+        update_user_lang(uid, selected_lang_code)
+        st.session_state.user["language"] = selected_lang_code
+        st.rerun()
+
+    menu = [
+        t["dashboard"],
+        t["daily_record"],
+        t["habits"],
+        t["tasks"],
+        t["goals"],
+        t["growth"],
+        t["achievements"],
+        t["smart_analysis"],
+        t["journal"],
+        t["sleep"],
+        t["settings"],
+    ]
+    page = st.sidebar.radio("منو / Menu", menu)
+
+    if st.sidebar.button(t["logout"]):
         st.session_state.user = None
         st.rerun()
 
     # 1. Dashboard
-    if page == "🏠 داشبورد":
-        st.header("🏠 داشبورد رشد شخصی")
+    if page == t["dashboard"]:
+        st.header(t["dashboard"])
         records = get_records(uid)
         streak = calculate_streak(records)
 
         today_score = 0
         month_score = 0
-        status_label = get_status_info(0)
+        status_label = get_status_info(0, curr_lang)
 
         if records:
             today_str = str(date.today())
@@ -531,21 +632,21 @@ else:
                 last_record = list(records.values())[-1]
                 today_score = last_record["percent"]
 
-            status_label = get_status_info(today_score)
+            status_label = get_status_info(today_score, curr_lang)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("تداوم فعلی", f"🔥 {streak} روز")
-        col2.metric("عملکرد امروز", f"{today_score}%")
-        col3.metric("میانگین ۳۰ روز", f"{month_score}%")
-        col4.metric("ارزیابی وضعیت", status_label)
+        col1.metric(t["streak"], f"🔥 {streak}")
+        col2.metric(t["today_perf"], f"{today_score}%")
+        col3.metric(t["avg_30"], f"{month_score}%")
+        col4.metric(t["status"], status_label)
 
     # 2. Daily Record
-    elif page == "📅 ثبت امروز":
-        st.header("📅 ثبت عملکرد روزانه")
-        sel_date = st.date_input("تاریخ ثبت", date.today())
+    elif page == t["daily_record"]:
+        st.header(t["daily_record"])
+        sel_date = st.date_input("Date / تاریخ", date.today())
         d_str = str(sel_date)
         habits = get_habits(uid)
         tot_weight = sum([h[3] for h in habits]) or 1
@@ -557,110 +658,204 @@ else:
         for h in habits:
             init_val = existing_record.get(h[1], 0)
             val = st.slider(
-                f"{h[1]} (وزن: {h[3]}%)",
-                0,
-                100,
-                int(init_val),
-                key=f"h_{h[0]}_{d_str}",
+                f"{h[1]} ({h[3]}%)", 0, 100, int(init_val), key=f"h_{h[0]}_{d_str}"
             )
             details[h[1]] = val
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
-        status_label = get_status_info(avg_score)
+        status_label = get_status_info(avg_score, curr_lang)
 
         c1, c2 = st.columns(2)
-        c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
-        c2.metric("ارزیابی وضعیت", status_label)
+        c1.metric(t["today_perf"], f"{avg_score}%")
+        c2.metric(t["status"], status_label)
 
-        if st.button("💾 ذخیره عملکرد"):
+        if st.button(t["save"]):
             save_record(uid, d_str, avg_score, details)
-            st.success("عملکرد با موفقیت ذخیره شد!")
+            st.success("Saved! / ذخیره شد!")
 
-    # 3. Habits Management
-    elif page == "🔁 مدیریت عادت‌ها":
-        st.header("🔁 مدیریت عادت‌ها")
+    # 3. Habits
+    elif page == t["habits"]:
+        st.header(t["habits"])
         habits = get_habits(uid)
         if habits:
             df_h = pd.DataFrame(
-                habits, columns=["کد", "نام عادت", "دسته‌بندی", "وزن (%)", "فعال"]
+                habits, columns=["ID", "Name", "Category", "Weight (%)", "Active"]
             )
             st.dataframe(
-                df_h[["نام عادت", "دسته‌بندی", "وزن (%)"]], use_container_width=True
+                df_h[["Name", "Category", "Weight (%)"]], use_container_width=True
             )
 
-        st.subheader("➕ افزودن عادت جدید")
-        h_name = st.text_input("نام عادت")
-        h_cat = st.selectbox("دسته‌بندی", ["سلامت", "یادگیری", "مهارت", "عمومی"])
-        h_weight = st.number_input("وزن (%)", 1, 100, 20)
-        if st.button("افزودن عادت"):
+        st.subheader("➕ Add Habit / افزودن عادت")
+        h_name = st.text_input("Habit Name / نام عادت")
+        h_cat = st.selectbox(
+            "Category", ["Health", "Learning", "Skills", "General"]
+        )
+        h_weight = st.number_input("Weight (%)", 1, 100, 20)
+        if st.button("Add / افزودن"):
             if add_habit(uid, h_name, h_cat, h_weight):
-                st.success("عادت جدید اضافه شد.")
+                st.success("Habit added / عادت اضافه شد.")
                 st.rerun()
 
     # 4. Tasks
-    elif page == "📝 لیست کارها":
-        st.header("📝 لیست کارها")
-        t_date = st.date_input("انتخاب تاریخ", date.today())
+    elif page == t["tasks"]:
+        st.header(t["tasks"])
+        t_date = st.date_input("Select Date", date.today())
         tasks = get_tasks(uid, t_date)
 
-        st.subheader(f"📋 کارهای تاریخ {t_date}:")
+        st.subheader(f"📋 Tasks for {t_date}:")
         if tasks:
-            for t in tasks:
+            for task in tasks:
                 chk = st.checkbox(
-                    f"{t[1]} (اولویت: {t[2]})", value=bool(t[3]), key=f"t_{t[0]}"
+                    f"{task[1]} ({task[2]})", value=bool(task[3]), key=f"t_{task[0]}"
                 )
-                if chk != bool(t[3]):
-                    toggle_task(t[0], chk)
+                if chk != bool(task[3]):
+                    toggle_task(task[0], chk)
                     st.rerun()
         else:
-            st.info("کاری برای این تاریخ ثبت نشده است.")
+            st.info("No tasks found.")
 
-        st.subheader("➕ افزودن کار جدید")
-        t_title = st.text_input("عنوان کار")
-        t_prio = st.selectbox("اولویت", ["ضروری", "متوسط", "پایین"])
-        if st.button("افزودن کار"):
+        st.subheader("➕ Add Task")
+        t_title = st.text_input("Task Title")
+        t_prio = st.selectbox("Priority", ["High", "Medium", "Low"])
+        if st.button("Add Task"):
             if t_title:
                 add_task(uid, t_date, t_title, t_prio)
-                st.success("کار اضافه شد.")
+                st.success("Task added.")
                 st.rerun()
 
     # 5. Goals
-    elif page == "🎯 اهداف":
-        st.header("🎯 اهداف شخصی")
+    elif page == t["goals"]:
+        st.header(t["goals"])
         goals = get_goals(uid)
         if goals:
             for g in goals:
                 st.subheader(f"{g[1]} ({g[5]})")
-                st.write(f"توضیحات: {g[2]} | ددلاین: {g[3]}")
-                prog = st.slider("درصد پیشرفت", 0, 100, g[4], key=f"g_{g[0]}")
+                st.write(f"Description: {g[2]} | Deadline: {g[3]}")
+                prog = st.slider("Progress %", 0, 100, g[4], key=f"g_{g[0]}")
                 if prog != g[4]:
                     update_goal_progress(g[0], prog)
                 st.divider()
         else:
-            st.info("هنوز هیچ هدفی ثبت نکرده‌اید.")
+            st.info("No goals added yet.")
 
-        st.subheader("➕ ساخت هدف جدید")
-        g_title = st.text_input("عنوان هدف")
-        g_desc = st.text_area("توضیحات")
-        g_dl = st.date_input("تاریخ ددلاین", date.today() + timedelta(days=30))
-        g_cat = st.selectbox("دسته‌بندی", ["شغلی", "تحصیلی", "مالی", "شخصی"])
-        if st.button("ایجاد هدف"):
+        st.subheader("➕ Create Goal")
+        g_title = st.text_input("Goal Title")
+        g_desc = st.text_area("Description")
+        g_dl = st.date_input("Deadline", date.today() + timedelta(days=30))
+        g_cat = st.selectbox(
+            "Category", ["Career", "Education", "Financial", "Personal"]
+        )
+        if st.button("Add Goal"):
             if g_title:
                 add_goal(uid, g_title, g_desc, g_dl, g_cat)
-                st.success("هدف ساخته شد.")
+                st.success("Goal created.")
                 st.rerun()
 
     # 6. Growth Chart
-    elif page == "📈 روند رشد":
-        st.header("📈 روند رشد و سوابق")
+    elif page == t["growth"]:
+        st.header(t["growth"])
         records = get_records(uid)
 
         if records:
             data = []
             for d_str, v in records.items():
                 score = v["percent"]
-                label = get_status_info(score)
+                label = get_status_info(score, curr_lang)
                 data.append(
-                    {
-                        "تاریخ": 
+                    {"Date": d_str, "Performance (%)": score, "Status": label}
+                )
+
+            df = pd.DataFrame(data)
+
+            st.dataframe(
+                df.sort_values(by="Date", ascending=False),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            fig = px.line(
+                df,
+                x="Date",
+                y="Performance (%)",
+                hover_data=["Status"],
+                markers=True,
+                title="Progress Graph",
+            )
+            # Remove whitespace gaps on dates
+            fig.update_xaxes(type="category")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No data recorded yet.")
+
+    # 7. Achievements
+    elif page == t["achievements"]:
+        st.header(t["achievements"])
+        records = get_records(uid)
+        streak = calculate_streak(records)
+        st.write(
+            f"**First Record Badge:** {'✅' if len(records) >= 1 else '❌'} Logged 1"
+            " day"
+        )
+        st.write(
+            f"**7 Days Streak:** {'✅' if streak >= 7 else '❌'} 7 days in a row"
+        )
+        st.write(
+            f"**30 Days Master:** {'✅' if streak >= 30 else '❌'} 30 days in a row"
+        )
+
+    # 8. Smart Analysis
+    elif page == t["smart_analysis"]:
+        st.header(t["smart_analysis"])
+        records = get_records(uid)
+        if records:
+            avg_all = round(
+                sum([v["percent"] for v in records.values()]) / len(records), 1
+            )
+            overall_status = get_status_info(avg_all, curr_lang)
+            st.info(
+                f"Overall Performance Average: **{avg_all}%** (Status:"
+                f" **{overall_status}**)."
+            )
+        else:
+            st.info("No data available for analysis.")
+
+    # 9. Journal
+    elif page == t["journal"]:
+        st.header(t["journal"])
+        j_date = st.date_input("Date", date.today())
+        curr_j = get_journal(uid, j_date)
+
+        mood = st.selectbox(
+            "Mood",
+            ["😊 Great", "😐 Normal", "🚀 Energetic", "😔 Tired"],
+            index=0,
+        )
+        default_note = curr_j[1] if curr_j and len(curr_j) > 1 else ""
+        note = st.text_area("Notes", value=default_note)
+        if st.button(t["save"]):
+            save_journal(uid, j_date, mood, note)
+            st.success("Saved!")
+
+    # 10. Sleep
+    elif page == t["sleep"]:
+        st.header(t["sleep"])
+        s_date = st.date_input("Date", date.today())
+        curr_s = get_sleep(uid, s_date)
+
+        hours = st.number_input(
+            "Sleep Hours", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5
+        )
+        quality = st.slider(
+            "Quality (1-10)", 1, 10, curr_s[1] if curr_s else 7
+        )
+        if st.button(t["save"]):
+            save_sleep(uid, s_date, hours, quality)
+            st.success("Saved!")
+
+    # 11. Settings
+    elif page == t["settings"]:
+        st.header(t["settings"])
+        st.write(f"**Username:** {user['username']}")
+        st.write(f"**Email:** {user['email']}")
+        st.write(f"**Language:** {curr_lang.upper()}")
