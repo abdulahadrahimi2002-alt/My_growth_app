@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from logic import (
     TRANSLATIONS,
@@ -31,6 +32,57 @@ from logic import (
 init_db()
 
 st.set_page_config(page_title="MyGrowth Pro", page_icon="🚀", layout="wide")
+
+# استایل‌دهی سفارشی کارت‌ها و عناصر بصری
+st.markdown(
+    """
+    <style>
+    div[data-testid="stMetric"] {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 18px;
+        border-right: 5px solid #6366f1;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    div[data-testid="stMetricLabel"] {
+        font-weight: bold;
+        color: #64748b;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #1e1b4b;
+        font-weight: bold;
+    }
+    </style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+def create_gauge_chart(percent, title_text="میزان رشد امروز"):
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=percent,
+            domain={"x": [0, 1], "y": [0, 1]},
+            title={"text": title_text, "font": {"size": 18, "color": "#1e1b4b"}},
+            number={"suffix": "%", "font": {"size": 26, "color": "#4f46e5"}},
+            gauge={
+                "axis": {"range": [0, 100], "tickwidth": 1},
+                "bar": {"color": "#6366f1"},
+                "bgcolor": "#f1f5f9",
+                "borderwidth": 0,
+                "steps": [
+                    {"range": [0, 50], "color": "#fee2e2"},
+                    {"range": [50, 75], "color": "#fef3c7"},
+                    {"range": [75, 100], "color": "#dcfce7"},
+                ],
+            },
+        )
+    )
+    fig.update_layout(height=220, margin=dict(l=20, r=20, t=30, b=20))
+    return fig
+
 
 if "temp_lang" not in st.session_state:
     st.session_state.temp_lang = "dari"
@@ -142,11 +194,18 @@ else:
             status_label = get_status_info(today_score, curr_lang)
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
+
         c1, c2, c3, c4 = st.columns(4)
         c1.metric(t["streak"], f"🔥 {streak}")
         c2.metric(t["today_perf"], f"{today_score}%")
         c3.metric(t["avg_30"], f"{month_score}%")
         c4.metric(t["status"], status_label)
+
+        st.divider()
+        st.plotly_chart(
+            create_gauge_chart(today_score, t["today_perf"]),
+            use_container_width=True,
+        )
 
     # 2. Daily Record Page
     elif page_key == "daily_record":
@@ -169,9 +228,16 @@ else:
             details[h[1]] = val
             total_score += (val * h[3]) / tot_weight
         avg_score = round(total_score, 1)
+
         c1, c2 = st.columns(2)
         c1.metric(t["today_perf"], f"{avg_score}%")
         c2.metric(t["status"], get_status_info(avg_score, curr_lang))
+
+        st.plotly_chart(
+            create_gauge_chart(avg_score, t["today_perf"]),
+            use_container_width=True,
+        )
+
         if st.button(t["save"]):
             save_record(uid, d_str, avg_score, details)
             st.success("ثبت گردید!")
@@ -260,7 +326,11 @@ else:
                 day_label = (
                     f"روز {idx} ({d_str})"
                     if curr_lang == "dari"
-                    else (f"Day {idx} ({d_str})" if curr_lang == "en" else f"第{idx}天 ({d_str})")
+                    else (
+                        f"Day {idx} ({d_str})"
+                        if curr_lang == "en"
+                        else f"第{idx}天 ({d_str})"
+                    )
                 )
                 data.append(
                     {
@@ -297,7 +367,6 @@ else:
             )
             fig.update_xaxes(type="category", title="روز / تاریخ")
             fig.update_yaxes(range=[0, 105])
-            # محدودسازی عرض گراف جهت مناسب نگه داشتن فاصله نقاط به حدود ۱.۵ الی ۲ سانتی‌متر
             fig.update_layout(
                 width=600, height=400, margin=dict(l=10, r=10, t=30, b=10)
             )
@@ -342,9 +411,7 @@ else:
             st.metric("میانگین کل عملکرد", f"{avg_all}%")
 
             if avg_all >= 80:
-                st.success(
-                    "🔥 **عالی!** روند انضباطی شما بسیار مطلوب است."
-                )
+                st.success("🔥 **عالی!** روند انضباطی شما بسیار مطلوب است.")
             elif avg_all >= 60:
                 st.warning(
                     "📈 **خوب!** عملکرد شما در سطح متوسط به بالا قرار دارد."
@@ -365,9 +432,7 @@ else:
         mood_options = ["😃", "🙂", "😐", "😔", "😡"]
         saved_mood = curr_j[0] if curr_j else "😐"
         m_index = (
-            mood_options.index(saved_mood)
-            if saved_mood in mood_options
-            else 2
+            mood_options.index(saved_mood) if saved_mood in mood_options else 2
         )
         mood = st.selectbox("Mood", mood_options, index=m_index)
         note = st.text_area("Note", value=curr_j[1] if curr_j else "")
@@ -394,4 +459,4 @@ else:
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-            
+    
