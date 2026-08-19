@@ -216,7 +216,7 @@ else:
                 st.success("هدف ایجاد شد.")
                 st.rerun()
 
-    elif page == t["growth"]:
+        elif page == t["growth"]:
         st.header(t["growth"])
         records = get_records(uid)
         if records:
@@ -225,6 +225,11 @@ else:
                     "Date": d_str,
                     "Performance (%)": v["percent"],
                     "Status": get_status_info(v["percent"], curr_lang),
+                    "Color": (
+                        "#28a745"
+                        if v["percent"] >= 70
+                        else ("#ffc107" if v["percent"] >= 50 else "#dc3545")
+                    ),
                 }
                 for d_str, v in records.items()
             ]
@@ -243,16 +248,20 @@ else:
                 markers=True,
                 title="نمودار روند رشد",
             )
+
             fig.update_traces(
                 textposition="top center",
                 line=dict(width=3, color="#0068C9"),
-                marker=dict(size=10),
+                marker=dict(size=12, color=df["Color"]),
             )
+
+            # تنظیم محور افقی به متنی برای نزدیک کردن فاصله‌ها
             fig.update_xaxes(type="category")
             fig.update_yaxes(range=[0, 105])
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هنوز داده‌ای ثبت نشده است.")
+            
 
     elif page == t["achievements"]:
         st.header(t["achievements"])
