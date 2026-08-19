@@ -216,7 +216,7 @@ else:
                 st.success("هدف ایجاد شد.")
                 st.rerun()
 
-        elif page == t["growth"]:
+            elif page == t["growth"]:
         st.header(t["growth"])
         records = get_records(uid)
         if records:
@@ -255,12 +255,12 @@ else:
                 marker=dict(size=12, color=df["Color"]),
             )
 
-            # تنظیم محور افقی به متنی برای نزدیک کردن فاصله‌ها
             fig.update_xaxes(type="category")
             fig.update_yaxes(range=[0, 105])
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هنوز داده‌ای ثبت نشده است.")
+            
             
 
     elif page == t["achievements"]:
