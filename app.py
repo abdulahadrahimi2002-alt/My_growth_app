@@ -220,22 +220,30 @@ else:
         st.header(t["growth"])
         records = get_records(uid)
         if records:
-            data = [
-                {
-                    "Date": d_str,
-                    "Performance (%)": v["percent"],
-                    "Status": get_status_info(v["percent"], curr_lang),
-                    "Color": (
-                        "#28a745"
-                        if v["percent"] >= 70
-                        else ("#ffc107" if v["percent"] >= 50 else "#dc3545")
-                    ),
-                }
-                for d_str, v in records.items()
-            ]
+            data = []
+            for d_str, v in records.items():
+                p = v["percent"]
+                if p >= 70:
+                    c = "#28a745"  # سبز
+                elif p >= 50:
+                    c = "#ffc107"  # زرد
+                else:
+                    c = "#dc3545"  # قرمز
+
+                data.append(
+                    {
+                        "Date": d_str,
+                        "Performance (%)": p,
+                        "Status": get_status_info(p, curr_lang),
+                        "Color": c,
+                    }
+                )
+
             df = pd.DataFrame(data)
             st.dataframe(
-                df.sort_values(by="Date", ascending=False),
+                df.sort_values(by="Date", ascending=False)[
+                    ["Date", "Performance (%)", "Status"]
+                ],
                 use_container_width=True,
                 hide_index=True,
             )
@@ -251,7 +259,7 @@ else:
             fig.update_traces(
                 textposition="top center",
                 line=dict(width=3, color="#0068C9"),
-                marker=dict(size=12, color=df["Color"]),
+                marker=dict(size=14, color=df["Color"].tolist()),
             )
             fig.update_xaxes(type="category")
             fig.update_yaxes(range=[0, 105])
@@ -339,3 +347,4 @@ else:
         st.write(f"**نام کاربری:** {user['username']}")
         st.write(f"**ایمیل:** {user['email']}")
         st.write(f"**زبان فعال:** {curr_lang.upper()}")
+                    
