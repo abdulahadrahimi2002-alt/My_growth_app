@@ -1,12 +1,12 @@
-import streamlit as st
-import sqlite3
 import hashlib
-import secrets
 import json
-from datetime import datetime, date, timedelta
+import secrets
+import sqlite3
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 import plotly.express as px
+import streamlit as st
 
 # ============================================================
 # CONFIG & CSS
@@ -59,9 +59,11 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
 # ============================================================
 # HELPER FUNCTIONS
 # ============================================================
+
 
 def get_status_label(percent):
     if percent >= 85:
@@ -73,33 +75,39 @@ def get_status_label(percent):
     else:
         return "⚠️ ضعیف", "#EF4444"
 
+
 # ============================================================
 # DATABASE & SECURITY
 # ============================================================
+
 
 def db():
     con = sqlite3.connect(DB_FILE)
     con.execute("PRAGMA foreign_keys = ON")
     return con
 
+
 def hash_password(password):
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 210_000)
     return salt.hex() + ":" + digest.hex()
 
+
 def verify_password(password, stored):
     try:
         salt_hex, digest_hex = stored.split(":")
-        digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), 210_000)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), 210_000
+        )
         return secrets.compare_digest(digest.hex(), digest_hex)
     except Exception:
         return False
 
+
 def init_db():
     con = db()
     cur = con.cursor()
-    
-    # ساخت تمامی جدول‌ها در صورت عدم وجود
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -182,13 +190,21 @@ def init_db():
     """)
     con.commit()
 
-    # ساخت کاربر پیش‌فرض Admin
     now_iso = datetime.now().isoformat()
-    admin_exists = cur.execute("SELECT id FROM users WHERE LOWER(username)='rahimi'").fetchone()
+    admin_exists = cur.execute(
+        "SELECT id FROM users WHERE LOWER(username)='rahimi'"
+    ).fetchone()
     if not admin_exists:
         cur.execute(
-            "INSERT INTO users (username,email,password_hash,language,created_at) VALUES(?,?,?,?,?)",
-            ("Rahimi", "abdulahad.rahimi2002@gmail.com", hash_password("Rahimi2002"), "dari", now_iso)
+            "INSERT INTO users (username,email,password_hash,language,created_at)"
+            " VALUES(?,?,?,?,?)",
+            (
+                "Rahimi",
+                "abdulahad.rahimi2002@gmail.com",
+                hash_password("Rahimi2002"),
+                "dari",
+                now_iso,
+            ),
         )
         user_id = cur.lastrowid
         default_habits = [
@@ -199,51 +215,58 @@ def init_db():
         ]
         for name, category, weight in default_habits:
             cur.execute(
-                "INSERT INTO habits (user_id,name,category,weight,created_at) VALUES(?,?,?,?,?)", 
-                (user_id, name, category, weight, now_iso)
+                "INSERT INTO habits (user_id,name,category,weight,created_at)"
+                " VALUES(?,?,?,?,?)",
+                (user_id, name, category, weight, now_iso),
             )
         con.commit()
 
     con.close()
 
+
 init_db()
+
 
 def authenticate(username, password):
     con = db()
     con.row_factory = sqlite3.Row
-    row = con.execute("SELECT * FROM users WHERE LOWER(username)=LOWER(?)", (username.strip(),)).fetchone()
+    row = con.execute(
+        "SELECT * FROM users WHERE LOWER(username)=LOWER(?)", (username.strip(),)
+    ).fetchone()
     con.close()
     if row and verify_password(password, row["password_hash"]):
         return dict(row)
     return None
 
+
 def create_user(username, email, password, language="dari"):
     username_clean = username.strip()
     email_clean = email.strip().lower()
-    
+
     if not username_clean or not email_clean or not password:
         return False, "لطفاً تمامی فیلدها را پر کنید."
-        
+
     con = db()
     cur = con.cursor()
-    
+
     existing = cur.execute(
-        "SELECT id FROM users WHERE LOWER(username)=? OR LOWER(email)=?", 
-        (username_clean.lower(), email_clean)
+        "SELECT id FROM users WHERE LOWER(username)=? OR LOWER(email)=?",
+        (username_clean.lower(), email_clean),
     ).fetchone()
-    
+
     if existing:
         con.close()
         return False, "این نام کاربری یا ایمیل قبلاً ثبت شده است."
-        
+
     try:
         now_iso = datetime.now().isoformat()
         cur.execute(
-            "INSERT INTO users (username,email,password_hash,language,created_at) VALUES(?,?,?,?,?)",
-            (username_clean, email_clean, hash_password(password), language, now_iso)
+            "INSERT INTO users (username,email,password_hash,language,created_at)"
+            " VALUES(?,?,?,?,?)",
+            (username_clean, email_clean, hash_password(password), language, now_iso),
         )
         user_id = cur.lastrowid
-        
+
         default_habits = [
             ("مطالعه", "یادگیری", 30),
             ("ورزش", "سلامت", 30),
@@ -252,10 +275,11 @@ def create_user(username, email, password, language="dari"):
         ]
         for name, category, weight in default_habits:
             cur.execute(
-                "INSERT INTO habits (user_id,name,category,weight,created_at) VALUES(?,?,?,?,?)", 
-                (user_id, name, category, weight, now_iso)
+                "INSERT INTO habits (user_id,name,category,weight,created_at)"
+                " VALUES(?,?,?,?,?)",
+                (user_id, name, category, weight, now_iso),
             )
-            
+
         con.commit()
         return True, "حساب با موفقیت ساخته شد!"
     except Exception as e:
@@ -264,32 +288,49 @@ def create_user(username, email, password, language="dari"):
     finally:
         con.close()
 
+
 # ============================================================
-# CRUD FUNCTIONS
+# DATA FUNCTIONS
 # ============================================================
+
 
 def get_records(user_id):
     con = db()
-    rows = con.execute("SELECT record_date,percent,details FROM records WHERE user_id=? ORDER BY record_date DESC", (user_id,)).fetchall()
+    rows = con.execute(
+        "SELECT record_date,percent,details FROM records WHERE user_id=? ORDER BY"
+        " record_date ASC",
+        (user_id,),
+    ).fetchall()
     con.close()
     result = {}
     for d, percent, details in rows:
-        try: details = json.loads(details or "{}")
-        except Exception: details = {}
+        try:
+            details = json.loads(details or "{}")
+        except Exception:
+            details = {}
         result[d] = {"percent": percent, "details": details}
     return result
 
+
 def get_habits(user_id):
     con = db()
-    rows = con.execute("SELECT id,name,category,weight,active FROM habits WHERE user_id=? ORDER BY id", (user_id,)).fetchall()
+    rows = con.execute(
+        "SELECT id,name,category,weight,active FROM habits WHERE user_id=? ORDER BY id",
+        (user_id,),
+    ).fetchall()
     con.close()
     return rows
+
 
 def add_habit(user_id, name, category, weight):
     con = db()
     try:
         now_iso = datetime.now().isoformat()
-        con.execute("INSERT INTO habits (user_id,name,category,weight,created_at) VALUES(?,?,?,?,?)", (user_id, name.strip(), category.strip(), weight, now_iso))
+        con.execute(
+            "INSERT INTO habits (user_id,name,category,weight,created_at)"
+            " VALUES(?,?,?,?,?)",
+            (user_id, name.strip(), category.strip(), weight, now_iso),
+        )
         con.commit()
         return True
     except sqlite3.IntegrityError:
@@ -297,14 +338,19 @@ def add_habit(user_id, name, category, weight):
     finally:
         con.close()
 
+
 def save_record(user_id, record_date, percent, details):
     con = db()
-    con.execute("""
+    con.execute(
+        """
         INSERT INTO records (user_id,record_date,percent,details) VALUES(?,?,?,?)
         ON CONFLICT(user_id,record_date) DO UPDATE SET percent=excluded.percent, details=excluded.details
-    """, (user_id, record_date, percent, json.dumps(details, ensure_ascii=False)))
+    """,
+        (user_id, record_date, percent, json.dumps(details, ensure_ascii=False)),
+    )
     con.commit()
     con.close()
+
 
 def calculate_streak(records):
     if not records:
@@ -323,37 +369,67 @@ def calculate_streak(records):
             break
     return streak
 
+
 def get_tasks(user_id, task_date):
     con = db()
-    rows = con.execute("SELECT id, title, priority, done FROM tasks WHERE user_id=? AND task_date=?", (user_id, str(task_date))).fetchall()
+    rows = con.execute(
+        "SELECT id, title, priority, done FROM tasks WHERE user_id=? AND"
+        " task_date=?",
+        (user_id, str(task_date)),
+    ).fetchall()
     con.close()
     return rows
+
 
 def add_task(user_id, task_date, title, priority):
     con = db()
-    con.execute("INSERT INTO tasks (user_id, task_date, title, priority) VALUES (?,?,?,?)", (user_id, str(task_date), title.strip(), priority))
+    con.execute(
+        "INSERT INTO tasks (user_id, task_date, title, priority) VALUES"
+        " (?,?,?,?)",
+        (user_id, str(task_date), title.strip(), priority),
+    )
     con.commit()
     con.close()
+
 
 def toggle_task(task_id, done_status):
     con = db()
-    con.execute("UPDATE tasks SET done=? WHERE id=?", (1 if done_status else 0, task_id))
+    con.execute(
+        "UPDATE tasks SET done=? WHERE id=?", (1 if done_status else 0, task_id)
+    )
     con.commit()
     con.close()
 
+
 def get_goals(user_id):
     con = db()
-    rows = con.execute("SELECT id, title, description, deadline, progress, category FROM goals WHERE user_id=? ORDER BY id DESC", (user_id,)).fetchall()
+    rows = con.execute(
+        "SELECT id, title, description, deadline, progress, category FROM goals"
+        " WHERE user_id=? ORDER BY id DESC",
+        (user_id,),
+    ).fetchall()
     con.close()
     return rows
+
 
 def add_goal(user_id, title, description, deadline, category):
     con = db()
     now_iso = datetime.now().isoformat()
-    con.execute("INSERT INTO goals (user_id, title, description, deadline, category, created_at) VALUES (?,?,?,?,?,?)", 
-                (user_id, title.strip(), description.strip(), str(deadline), category, now_iso))
+    con.execute(
+        "INSERT INTO goals (user_id, title, description, deadline, category,"
+        " created_at) VALUES (?,?,?,?,?,?)",
+        (
+            user_id,
+            title.strip(),
+            description.strip(),
+            str(deadline),
+            category,
+            now_iso,
+        ),
+    )
     con.commit()
     con.close()
+
 
 def update_goal_progress(goal_id, progress):
     con = db()
@@ -361,35 +437,52 @@ def update_goal_progress(goal_id, progress):
     con.commit()
     con.close()
 
+
 def get_journal(user_id, note_date):
     con = db()
-    row = con.execute("SELECT mood, note FROM journal WHERE user_id=? AND note_date=?", (user_id, str(note_date))).fetchone()
+    row = con.execute(
+        "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
+        (user_id, str(note_date)),
+    ).fetchone()
     con.close()
     return row
+
 
 def save_journal(user_id, note_date, mood, note):
     con = db()
-    con.execute("""
+    con.execute(
+        """
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
         ON CONFLICT(user_id, note_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
-    """, (user_id, str(note_date), mood, note))
+    """,
+        (user_id, str(note_date), mood, note),
+    )
     con.commit()
     con.close()
+
 
 def get_sleep(user_id, sleep_date):
     con = db()
-    row = con.execute("SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?", (user_id, str(sleep_date))).fetchone()
+    row = con.execute(
+        "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
+        (user_id, str(sleep_date)),
+    ).fetchone()
     con.close()
     return row
 
+
 def save_sleep(user_id, sleep_date, hours, quality):
     con = db()
-    con.execute("""
+    con.execute(
+        """
         INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
         ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
-    """, (user_id, str(sleep_date), hours, quality))
+    """,
+        (user_id, str(sleep_date), hours, quality),
+    )
     con.commit()
     con.close()
+
 
 # ============================================================
 # INTERFACE
@@ -401,9 +494,9 @@ if "user" not in st.session_state:
 if not st.session_state.user:
     st.title("🚀 MyGrowth Pro Max")
     st.caption("سیستم پیشرفته مدیریت رشد شخصی")
-    
+
     tab_login, tab_reg = st.tabs(["ورود به حساب", "ساخت حساب جدید"])
-    
+
     with tab_login:
         u = st.text_input("نام کاربری", key="l_u")
         p = st.text_input("رمز عبور", type="password", key="l_p")
@@ -421,7 +514,7 @@ if not st.session_state.user:
         ru = st.text_input("نام کاربری جدید", key="r_u")
         re = st.text_input("ایمیل", key="r_e")
         rp = st.text_input("رمز عبور جدید", type="password", key="r_p")
-        
+
         if st.button("ثبت‌نام و ساخت حساب"):
             success, message = create_user(ru, re, rp)
             if success:
@@ -432,7 +525,7 @@ if not st.session_state.user:
 else:
     user = st.session_state.user
     uid = user["id"]
-    
+
     st.sidebar.markdown(f"### 👤 {user['username']}")
     menu = [
         "🏠 داشبورد",
@@ -445,7 +538,7 @@ else:
         "🧠 تحلیل هوشمند",
         "🙂 ژورنال روزانه",
         "😴 پایش خواب",
-        "⚙️ تنظیمات"
+        "⚙️ تنظیمات",
     ]
     page = st.sidebar.radio("منو", menu, label_visibility="collapsed")
     st.sidebar.markdown("---")
@@ -458,30 +551,28 @@ else:
         st.header("🏠 داشبورد رشد شخصی")
         records = get_records(uid)
         streak = calculate_streak(records)
-        
+
         today_score = 0
         month_score = 0
         last_status, last_color = "ثبت‌نشده", "#6B7280"
-        
+
         if records:
-            # محاسبه عملکرد امروز
             today_str = str(date.today())
             if today_str in records:
-                today_score = records[today_str]['percent']
+                today_score = records[today_str]["percent"]
                 last_status, last_color = get_status_label(today_score)
             else:
-                last_record = list(records.values())[0]
-                today_score = last_record['percent']
+                last_record = list(records.values())[-1]
+                today_score = last_record["percent"]
                 last_status, last_color = get_status_label(today_score)
 
-            # محاسبه میانگین ۳۰ روز اخیر (ماهانه)
-            recent_30 = [v['percent'] for k, v in list(records.items())[:30]]
+            recent_30 = [v["percent"] for v in list(records.values())[-30:]]
             month_score = round(sum(recent_30) / len(recent_30), 1)
 
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("تداوم فعلی (Streak)", f"🔥 {streak} روز")
         col2.metric("عملکرد روزانه (امروز)", f"{today_score}%")
-        col3.metric("میانگین ۳۰ روزه (ماهانه)", f"{month_score}%")
+        col3.metric("میانگین ۳۰ روز اخیر (ماهانه)", f"{month_score}%")
         col4.metric("ارزیابی وضعیت", last_status)
 
     # 2. Today
@@ -491,25 +582,30 @@ else:
         d_str = str(sel_date)
         habits = get_habits(uid)
         tot_weight = sum([h[3] for h in habits]) or 1
-        
-        # بارگیری مقادیر قبلی ثبت شده در صورت وجود
+
         existing_record = get_records(uid).get(d_str, {}).get("details", {})
-        
+
         details = {}
         total_score = 0
         for h in habits:
             init_val = existing_record.get(h[1], 0)
-            val = st.slider(f"{h[1]} (وزن: {h[3]}%)", 0, 100, int(init_val), key=f"h_{h[0]}_{d_str}")
+            val = st.slider(
+                f"{h[1]} (وزن: {h[3]}%)",
+                0,
+                100,
+                int(init_val),
+                key=f"h_{h[0]}_{d_str}",
+            )
             details[h[1]] = val
             total_score += (val * h[3]) / tot_weight
 
         avg_score = round(total_score, 1)
         status, color = get_status_label(avg_score)
-        
+
         c1, c2 = st.columns(2)
         c1.metric("میانگین عملکرد این روز", f"{avg_score}%")
         c2.metric("ارزیابی وضعیت", status)
-        
+
         if st.button("💾 ذخیره عملکرد"):
             save_record(uid, d_str, avg_score, details)
             st.success(f"عملکرد تاریخ {d_str} با موفقیت ذخیره شد!")
@@ -519,8 +615,12 @@ else:
         st.header("🔁 عادت‌های من")
         habits = get_habits(uid)
         if habits:
-            df_h = pd.DataFrame(habits, columns=['کد', 'نام عادت', 'دسته‌بندی', 'وزن (%)', 'فعال'])
-            st.dataframe(df_h[['نام عادت', 'دسته‌بندی', 'وزن (%)']], use_container_width=True)
+            df_h = pd.DataFrame(
+                habits, columns=["کد", "نام عادت", "دسته‌بندی", "وزن (%)", "فعال"]
+            )
+            st.dataframe(
+                df_h[["نام عادت", "دسته‌بندی", "وزن (%)"]], use_container_width=True
+            )
 
         st.subheader("➕ افزودن عادت جدید")
         h_name = st.text_input("نام عادت")
@@ -531,22 +631,24 @@ else:
                 st.success("عادت جدید اضافه شد.")
                 st.rerun()
 
-    # 4. Tasks (تاریخ‌وار)
+    # 4. Tasks
     elif page == "📝 لیست کارها":
         st.header("📝 کارهای روزمره (تاریخ‌وار)")
         t_date = st.date_input("انتخاب تاریخ جهت ثبت یا مشاهده کارها", date.today())
         tasks = get_tasks(uid, t_date)
-        
+
         st.subheader(f"📋 لیست کارهای تاریخ: {t_date}")
         if tasks:
             for t in tasks:
-                chk = st.checkbox(f"{t[1]} (اولویت: {t[2]})", value=bool(t[3]), key=f"t_{t[0]}")
+                chk = st.checkbox(
+                    f"{t[1]} (اولویت: {t[2]})", value=bool(t[3]), key=f"t_{t[0]}"
+                )
                 if chk != bool(t[3]):
                     toggle_task(t[0], chk)
                     st.rerun()
         else:
-            st.info("کاري برای این تاریخ ثبت نشده است.")
-                
+            st.info("کاری برای این تاریخ ثبت نشده است.")
+
         st.subheader("➕ افزودن کار جدید برای این تاریخ")
         t_title = st.text_input("عنوان کار")
         t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط", "پایین"])
@@ -571,40 +673,4 @@ else:
         st.subheader("➕ ساخت هدف جدید")
         g_title = st.text_input("عنوان هدف")
         g_desc = st.text_area("توضیحات")
-        g_dl = st.date_input("تاریخ ددلاین", date.today() + timedelta(days=30))
-        g_cat = st.selectbox("دسته‌بندی هدف", ["شغلی", "تحصیلی", "مالی", "شخصی"])
-        if st.button("ایجاد هدف"):
-            if g_title:
-                add_goal(uid, g_title, g_desc, g_dl, g_cat)
-                st.success("هدف جدید ساخته شد.")
-                st.rerun()
-
-        # 6. Growth
-    elif page == "📈 روند رشد":
-        st.header("📈 روند رشد و تحلیل میانگین‌ها")
-        records = get_records(uid)
-        if records:
-            data = [
-                {
-                    "تاریخ": d,
-                    "عملکرد (%)": v["percent"],
-                    "وضعیت": get_status_label(v["percent"])[0],
-                }
-                for d, v in records.items()
-            ]
-            df = pd.DataFrame(data).sort_values("تاریخ")
-
-            avg_all = round(df["عملکرد (%)"].mean(), 1)
-            recent_30_avg = round(df.tail(30)["عملکرد (%)"].mean(), 1)
-
-            m1, m2 = st.columns(2)
-            m1.metric("میانگین عملکرد کل دوره", f"{avg_all}%")
-            m2.metric("میانگین عملکرد ۳۰ روز اخیر", f"{recent_30_avg}%")
-
-            fig = px.line(
-                df, x="تاریخ", y="عملکرد (%)", hover_data=["وضعیت"], markers=True
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("هنوز هیچ داده‌ای برای نمایش نمودار ثبت نشده است.")
-            
+        g_dl = st.date_input("تاریخ ددلاین", date.today() + timedelta(
