@@ -20,7 +20,7 @@ st.set_page_config(
 DB_FILE = "mygrowth.db"
 
 # ============================================================
-# 2. Translations (دری و انگلیسی)
+# 2. Translations
 # ============================================================
 TRANSLATIONS = {
     "dari": {
@@ -217,20 +217,9 @@ def init_db():
         )
     """)
 
-    # Auto-fix column updates
-    try:
-        cur.execute("ALTER TABLE goals ADD COLUMN category TEXT DEFAULT 'General'")
-    except sqlite3.OperationalError:
-        pass
-
-    try:
-        cur.execute("ALTER TABLE goals ADD COLUMN created_at TEXT DEFAULT ''")
-    except sqlite3.OperationalError:
-        pass
-
     con.commit()
 
-    # Default Admin User
+    # Default Admin
     now_iso = datetime.now().isoformat()
     admin_exists = cur.execute(
         "SELECT id FROM users WHERE LOWER(username)='rahimi'"
@@ -300,11 +289,7 @@ def create_user(username, email, password, language="dari"):
 
     if existing:
         con.close()
-        return (
-            False,
-            "این نام کاربری یا ایمیل قبلاً ثبت شده است / User or Email already"
-            " exists.",
-        )
+        return False, "این نام کاربری یا ایمیل قبلاً ثبت شده است."
 
     try:
         now_iso = datetime.now().isoformat()
@@ -329,10 +314,10 @@ def create_user(username, email, password, language="dari"):
             )
 
         con.commit()
-        return True, "حساب با موفقیت ساخته شد / Account created successfully!"
+        return True, "حساب با موفقیت ساخته شد!"
     except Exception as e:
         con.rollback()
-        return False, f"خطا / Error: {str(e)}"
+        return False, f"خطا: {str(e)}"
     finally:
         con.close()
 
@@ -499,7 +484,7 @@ def save_journal(user_id, note_date, mood, note):
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
         ON CONFLICT(user_id, note_date) DO UPDATE SET mood=excluded.mood, note=excluded.note
     """,
-        (user_id, note_date, mood, note),
+        (user_id, str(note_date), mood, note),
     )
     con.commit()
     con.close()
@@ -522,7 +507,7 @@ def save_sleep(user_id, sleep_date, hours, quality):
         INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
         ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
     """,
-        (user_id, sleep_date, hours, quality),
+        (user_id, str(sleep_date), hours, quality),
     )
     con.commit()
     con.close()
@@ -536,7 +521,7 @@ def update_user_lang(user_id, lang):
 
 
 # ============================================================
-# 5. UI (Streamlit Interface)
+# 5. UI Application
 # ============================================================
 
 if "user" not in st.session_state:
@@ -555,7 +540,7 @@ if not st.session_state.user:
                 usr = authenticate(u, p)
                 if usr:
                     st.session_state.user = usr
-                    st.success("ورود موفقیت‌آمیز بود! / Login successful!")
+                    st.success("ورود موفقیت‌آمیز بود!")
                     st.rerun()
                 else:
                     st.error("نام کاربری یا رمز عبور اشتباه است.")
@@ -672,7 +657,7 @@ else:
 
         if st.button(t["save"]):
             save_record(uid, d_str, avg_score, details)
-            st.success("Saved! / ذخیره شد!")
+            st.success("ذخیره شد!")
 
     # 3. Habits
     elif page == t["habits"]:
@@ -686,24 +671,24 @@ else:
                 df_h[["Name", "Category", "Weight (%)"]], use_container_width=True
             )
 
-        st.subheader("➕ Add Habit / افزودن عادت")
-        h_name = st.text_input("Habit Name / نام عادت")
+        st.subheader("➕ افزودن عادت")
+        h_name = st.text_input("نام عادت")
         h_cat = st.selectbox(
-            "Category", ["Health", "Learning", "Skills", "General"]
+            "دسته‌بندی", ["سلامت", "یادگیری", "مهارت", "عمومی"]
         )
-        h_weight = st.number_input("Weight (%)", 1, 100, 20)
-        if st.button("Add / افزودن"):
+        h_weight = st.number_input("وزن (%)", 1, 100, 20)
+        if st.button("افزودن"):
             if add_habit(uid, h_name, h_cat, h_weight):
-                st.success("Habit added / عادت اضافه شد.")
+                st.success("عادت اضافه شد.")
                 st.rerun()
 
     # 4. Tasks
     elif page == t["tasks"]:
         st.header(t["tasks"])
-        t_date = st.date_input("Select Date", date.today())
+        t_date = st.date_input("تاریخ", date.today())
         tasks = get_tasks(uid, t_date)
 
-        st.subheader(f"📋 Tasks for {t_date}:")
+        st.subheader(f"📋 کارهای تاریخ {t_date}:")
         if tasks:
             for task in tasks:
                 chk = st.checkbox(
@@ -713,15 +698,15 @@ else:
                     toggle_task(task[0], chk)
                     st.rerun()
         else:
-            st.info("No tasks found.")
+            st.info("هیچ کاری ثبت نشده است.")
 
-        st.subheader("➕ Add Task")
-        t_title = st.text_input("Task Title")
-        t_prio = st.selectbox("Priority", ["High", "Medium", "Low"])
-        if st.button("Add Task"):
+        st.subheader("➕ افزودن کار جدید")
+        t_title = st.text_input("عنوان کار")
+        t_prio = st.selectbox("اولویت", ["High", "Medium", "Low"])
+        if st.button("ثبت کار"):
             if t_title:
                 add_task(uid, t_date, t_title, t_prio)
-                st.success("Task added.")
+                st.success("کار اضافه شد.")
                 st.rerun()
 
     # 5. Goals
@@ -731,25 +716,25 @@ else:
         if goals:
             for g in goals:
                 st.subheader(f"{g[1]} ({g[5]})")
-                st.write(f"Description: {g[2]} | Deadline: {g[3]}")
-                prog = st.slider("Progress %", 0, 100, g[4], key=f"g_{g[0]}")
+                st.write(f"توضیحات: {g[2]} | مهلت: {g[3]}")
+                prog = st.slider("درصد پیشرفت", 0, 100, g[4], key=f"g_{g[0]}")
                 if prog != g[4]:
                     update_goal_progress(g[0], prog)
                 st.divider()
         else:
-            st.info("No goals added yet.")
+            st.info("هیچ هدفی ثبت نشده است.")
 
-        st.subheader("➕ Create Goal")
-        g_title = st.text_input("Goal Title")
-        g_desc = st.text_area("Description")
-        g_dl = st.date_input("Deadline", date.today() + timedelta(days=30))
+        st.subheader("➕ ایجاد هدف جدید")
+        g_title = st.text_input("عنوان هدف")
+        g_desc = st.text_area("توضیحات")
+        g_dl = st.date_input("مهلت زمانی", date.today() + timedelta(days=30))
         g_cat = st.selectbox(
-            "Category", ["Career", "Education", "Financial", "Personal"]
+            "دسته‌بندی", ["شغلی", "تحصیلی", "مالی", "شخصی"]
         )
-        if st.button("Add Goal"):
+        if st.button("ثبت هدف"):
             if g_title:
                 add_goal(uid, g_title, g_desc, g_dl, g_cat)
-                st.success("Goal created.")
+                st.success("هدف ایجاد شد.")
                 st.rerun()
 
     # 6. Growth Chart
@@ -780,13 +765,13 @@ else:
                 y="Performance (%)",
                 hover_data=["Status"],
                 markers=True,
-                title="Progress Graph",
+                title="نمودار روند رشد",
             )
-            # Remove whitespace gaps on dates
+            # حذف فواصل خالی بین روزها در گراف
             fig.update_xaxes(type="category")
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("No data recorded yet.")
+            st.info("هنوز داده‌ای ثبت نشده است.")
 
     # 7. Achievements
     elif page == t["achievements"]:
@@ -794,14 +779,16 @@ else:
         records = get_records(uid)
         streak = calculate_streak(records)
         st.write(
-            f"**First Record Badge:** {'✅' if len(records) >= 1 else '❌'} Logged 1"
-            " day"
+            f"**مدال اولین ثبت:** {'✅' if len(records) >= 1 else '❌'} (حداقل ۱"
+            " روز ثبت)"
         )
         st.write(
-            f"**7 Days Streak:** {'✅' if streak >= 7 else '❌'} 7 days in a row"
+            f"**تداوم ۷ روزه:** {'✅' if streak >= 7 else '❌'} (۷ روز پشت سر"
+            " هم)"
         )
         st.write(
-            f"**30 Days Master:** {'✅' if streak >= 30 else '❌'} 30 days in a row"
+            f"**استاد ۳۰ روزه:** {'✅' if streak >= 30 else '❌'} (۳۰ روز پشت"
+            " سر هم)"
         )
 
     # 8. Smart Analysis
@@ -814,48 +801,60 @@ else:
             )
             overall_status = get_status_info(avg_all, curr_lang)
             st.info(
-                f"Overall Performance Average: **{avg_all}%** (Status:"
-                f" **{overall_status}**)."
+                f"میانگین کل عملکرد شما: **{avg_all}%** (وضعیت کلی:"
+                f" **{overall_status}**)"
             )
         else:
-            st.info("No data available for analysis.")
+            st.info("داده‌ای برای تحلیل وجود ندارد.")
 
-    # 9. Journal
+    # 9. Journal (ژورنال روزانه با ایموجی)
     elif page == t["journal"]:
         st.header(t["journal"])
-        j_date = st.date_input("Date", date.today())
+        j_date = st.date_input("تاریخ", date.today())
         curr_j = get_journal(uid, j_date)
 
-        mood = st.selectbox(
-            "Mood",
-            ["😊 Great", "😐 Normal", "🚀 Energetic", "😔 Tired"],
-            index=0,
-        )
-        default_note = curr_j[1] if curr_j and len(curr_j) > 1 else ""
-        note = st.text_area("Notes", value=default_note)
+        mood_options = [
+            "😃 عالی / Excellent",
+            "🙂 خوب / Good",
+            "😐 معمولی / Normal",
+            "😔 غمگین / Sad",
+            "😡 عصبانی / Angry",
+        ]
+        
+        default_mood_idx = 0
+        if curr_j and curr_j[0]:
+            for idx, m_opt in enumerate(mood_options):
+                if curr_j[0] in m_opt or m_opt in curr_j[0]:
+                    default_mood_idx = idx
+                    break
+
+        mood = st.selectbox("حالت روحی / Mood", mood_options, index=default_mood_idx)
+        default_note = curr_j[1] if curr_j and len(curr_j) > 1 and curr_j[1] else ""
+        note = st.text_area("یادداشت روزانه / Note", value=default_note)
+
         if st.button(t["save"]):
             save_journal(uid, j_date, mood, note)
-            st.success("Saved!")
+            st.success("ژورنال با موفقیت ذخیره شد!")
 
     # 10. Sleep
     elif page == t["sleep"]:
         st.header(t["sleep"])
-        s_date = st.date_input("Date", date.today())
+        s_date = st.date_input("تاریخ", date.today())
         curr_s = get_sleep(uid, s_date)
 
         hours = st.number_input(
-            "Sleep Hours", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5
+            "ساعات خواب", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5
         )
         quality = st.slider(
-            "Quality (1-10)", 1, 10, curr_s[1] if curr_s else 7
+            "کیفیت خواب (۱ تا ۱۰)", 1, 10, curr_s[1] if curr_s else 7
         )
         if st.button(t["save"]):
             save_sleep(uid, s_date, hours, quality)
-            st.success("Saved!")
+            st.success("اطلاعات خواب ذخیره شد!")
 
     # 11. Settings
     elif page == t["settings"]:
         st.header(t["settings"])
-        st.write(f"**Username:** {user['username']}")
-        st.write(f"**Email:** {user['email']}")
-        st.write(f"**Language:** {curr_lang.upper()}")
+        st.write(f"**نام کاربری:** {user['username']}")
+        st.write(f"**ایمیل:** {user['email']}")
+        st.write(f"**زبان فعال:** {curr_lang.upper()}")
