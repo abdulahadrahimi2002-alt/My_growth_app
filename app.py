@@ -659,7 +659,7 @@ else:
                 st.success("عادت جدید اضافه شد.")
                 st.rerun()
 
-    # 4. Tasks
+        # 4. Tasks
     elif page == "📝 لیست کارها":
         st.header("📝 کارهای روزمره (تاریخ‌وار)")
         t_date = st.date_input("انتخاب تاریخ جهت ثبت یا مشاهده کارها", date.today())
@@ -679,4 +679,10 @@ else:
 
         st.subheader("➕ افزودن کار جدید برای این تاریخ")
         t_title = st.text_input("عنوان کار")
-        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط"
+        t_prio = st.selectbox("اولویت", ["عالی/ضروری", "متوسط", "پایین"])
+        if st.button("افزودن کار"):
+            if t_title:
+                add_task(uid, t_date, t_title, t_prio)
+                st.success("کار اضافه شد.")
+                st.rerun()
+                
