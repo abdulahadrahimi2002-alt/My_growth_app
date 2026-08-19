@@ -7,6 +7,14 @@ DB_FILE = "growth_app.db"
 
 TRANSLATIONS = {
     "dari": {
+        "title": "🚀 سیستم مدیریت رشد شخصی",
+        "login": "ورود",
+        "register": "ثبت‌نام",
+        "username": "نام کاربری",
+        "password": "رمز عبور",
+        "email": "ایمیل",
+        "login_btn": "ورود به حساب",
+        "reg_btn": "ایجاد حساب",
         "dashboard": "📊 داشبورد",
         "daily_record": "📅 ثبت امروز",
         "habits": "🛠️ مدیریت عادت‌ها",
@@ -19,7 +27,7 @@ TRANSLATIONS = {
         "sleep": "😴 پایش خواب",
         "settings": "⚙️ تنظیمات",
         "logout": "🚪 خروج از حساب",
-        "lang_select": "🌐 Language / تغییر زبان",
+        "lang_select": "🌐 تغییر زبان",
         "streak": "تداوم ثبت (روز)",
         "today_perf": "عملکرد امروز",
         "avg_30": "میانگین ۳۰ روز",
@@ -27,6 +35,14 @@ TRANSLATIONS = {
         "save": "💾 ذخیره‌سازی",
     },
     "en": {
+        "title": "🚀 Personal Growth System",
+        "login": "Login",
+        "register": "Register",
+        "username": "Username",
+        "password": "Password",
+        "email": "Email",
+        "login_btn": "Login",
+        "reg_btn": "Register",
         "dashboard": "📊 Dashboard",
         "daily_record": "📅 Daily Record",
         "habits": "🛠️ Manage Habits",
@@ -45,6 +61,34 @@ TRANSLATIONS = {
         "avg_30": "30-Day Avg",
         "status": "Status",
         "save": "💾 Save Record",
+    },
+    "zh": {
+        "title": "🚀 个人成长管理系统",
+        "login": "登录",
+        "register": "注册",
+        "username": "用户名",
+        "password": "密码",
+        "email": "电子邮件",
+        "login_btn": "登录",
+        "reg_btn": "注册",
+        "dashboard": "📊 仪表板",
+        "daily_record": "📅 今日打卡",
+        "habits": "🛠️ 习惯管理",
+        "tasks": "📋 任务列表",
+        "goals": "🎯 目标规划",
+        "growth": "📈 成长趋势",
+        "achievements": "🏆 成就徽章",
+        "smart_analysis": "🧠 智能分析",
+        "journal": "😐 每日日志",
+        "sleep": "😴 睡眠监测",
+        "settings": "⚙️ 设置",
+        "logout": "🚪 退出登录",
+        "lang_select": "🌐 选择语言",
+        "streak": "连续打卡 (天)",
+        "today_perf": "今日表现",
+        "avg_30": "30天平均",
+        "status": "状态",
+        "save": "💾 保存记录",
     },
 }
 
@@ -130,17 +174,18 @@ def init_db():
 init_db()
 
 
-def create_user(username, email, password):
+def create_user(username, email, password, lang="dari"):
     con = sqlite3.connect(DB_FILE)
     cur = con.cursor()
     try:
         cur.execute(
-            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-            (username, email, hash_password(password)),
+            "INSERT INTO users (username, email, password, language) VALUES"
+            " (?, ?, ?, ?)",
+            (username, email, hash_password(password), lang),
         )
         con.commit()
         con.close()
-        return True, "حساب کاربری با موفقیت ساخته شد."
+        return True, "حساب کاربری ساخته شد."
     except sqlite3.IntegrityError:
         con.close()
         return False, "این نام کاربری قبلاً ثبت شده است."
@@ -161,7 +206,7 @@ def authenticate(username, password):
             "id": user[0],
             "username": user[1],
             "email": user[2],
-            "language": user[3],
+            "language": user[3] if user[3] else "dari",
         }
     return None
 
@@ -280,13 +325,29 @@ def calculate_streak(records):
 
 def get_status_info(score, lang="dari"):
     if score >= 85:
-        return "🟢 عالی" if lang == "dari" else "🟢 Excellent"
+        return (
+            "🟢 عالی"
+            if lang == "dari"
+            else ("🟢 Excellent" if lang == "en" else "🟢 优秀")
+        )
     elif score >= 70:
-        return "🟡 خوب" if lang == "dari" else "🟡 Good"
+        return (
+            "🟡 خوب"
+            if lang == "dari"
+            else ("🟡 Good" if lang == "en" else "🟡 良好")
+        )
     elif score >= 50:
-        return "🟠 متوسط" if lang == "dari" else "🟠 Average"
+        return (
+            "🟠 متوسط"
+            if lang == "dari"
+            else ("🟠 Average" if lang == "en" else "🟠 一般")
+        )
     else:
-        return "🔴 ضعیف" if lang == "dari" else "🔴 Poor"
+        return (
+            "🔴 ضعیف"
+            if lang == "dari"
+            else ("🔴 Poor" if lang == "en" else "🔴 较差")
+        )
 
 
 def get_tasks(user_id, t_date):
