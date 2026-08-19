@@ -84,6 +84,45 @@ def create_gauge_chart(percent, title_text="میزان رشد امروز"):
     return fig
 
 
+def create_modern_line_chart(df, x_col, y_col, title="روند تغییرات"):
+    """ساخت نمودار خطی مدرن با افکت سایه و استایل سفارشی"""
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=df[x_col],
+            y=df[y_col],
+            mode="lines+markers",
+            name=title,
+            line=dict(color="#6366f1", width=3, shape="spline"),
+            marker=dict(
+                size=8,
+                color="#4f46e5",
+                line=dict(width=2, color="#ffffff"),
+            ),
+            fill="tozeroy",
+            fillcolor="rgba(99, 102, 241, 0.1)",
+            hovertemplate="<b>%{x}</b><br>عملکرد: %{y}%<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        title={"text": title, "font": {"size": 18, "color": "#1e1b4b"}},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            showgrid=True, gridcolor="#f1f5f9", tickfont=dict(color="#64748b")
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor="#f1f5f9",
+            range=[0, 105],
+            tickfont=dict(color="#64748b"),
+        ),
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=380,
+    )
+    return fig
+
+
 if "temp_lang" not in st.session_state:
     st.session_state.temp_lang = "dari"
 
@@ -318,11 +357,6 @@ else:
             sorted_dates = sorted(records.keys())
             for idx, d_str in enumerate(sorted_dates, 1):
                 p = records[d_str]["percent"]
-                c = (
-                    "#28a745"
-                    if p >= 70
-                    else ("#ffc107" if p >= 50 else "#dc3545")
-                )
                 day_label = (
                     f"روز {idx} ({d_str})"
                     if curr_lang == "dari"
@@ -338,7 +372,6 @@ else:
                         "Date": d_str,
                         "Performance (%)": p,
                         "Status": get_status_info(p, curr_lang),
-                        "Color": c,
                     }
                 )
 
@@ -352,25 +385,14 @@ else:
                 hide_index=True,
             )
 
-            fig = px.line(
+            # فراخوانی نمودار مدرن جدید
+            fig = create_modern_line_chart(
                 df,
-                x="X_Label",
-                y="Performance (%)",
-                text="Performance (%)",
-                markers=True,
-                title="Growth Trend",
+                x_col="X_Label",
+                y_col="Performance (%)",
+                title="📈 روند رشد روزانه",
             )
-            fig.update_traces(
-                textposition="top center",
-                line=dict(width=3, color="#0068C9"),
-                marker=dict(size=12, color=df["Color"].tolist()),
-            )
-            fig.update_xaxes(type="category", title="روز / تاریخ")
-            fig.update_yaxes(range=[0, 105])
-            fig.update_layout(
-                width=600, height=400, margin=dict(l=10, r=10, t=30, b=10)
-            )
-            st.plotly_chart(fig, use_container_width=False)
+            st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("هیچ داده‌ای موجود نیست.")
 
@@ -459,4 +481,4 @@ else:
         st.write(f"**Username:** {user['username']}")
         st.write(f"**Email:** {user['email']}")
         st.write(f"**Language:** {curr_lang.upper()}")
-    
+            
