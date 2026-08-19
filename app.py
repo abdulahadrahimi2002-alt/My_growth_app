@@ -469,6 +469,18 @@ def update_goal_progress(goal_id, progress):
 
 def get_journal(user_id, note_date):
     con = db()
+    # ساخت خودکار جدول در صورت نبود برای جلوگیری از خطای OperationalError
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            note_date TEXT NOT NULL,
+            mood TEXT,
+            note TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, note_date)
+        )
+    """)
     row = con.execute(
         "SELECT mood, note FROM journal WHERE user_id=? AND note_date=?",
         (user_id, str(note_date)),
@@ -479,6 +491,17 @@ def get_journal(user_id, note_date):
 
 def save_journal(user_id, note_date, mood, note):
     con = db()
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS journal (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            note_date TEXT NOT NULL,
+            mood TEXT,
+            note TEXT,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, note_date)
+        )
+    """)
     con.execute(
         """
         INSERT INTO journal (user_id, note_date, mood, note) VALUES (?,?,?,?)
@@ -492,6 +515,17 @@ def save_journal(user_id, note_date, mood, note):
 
 def get_sleep(user_id, sleep_date):
     con = db()
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS sleep (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sleep_date TEXT NOT NULL,
+            hours REAL DEFAULT 0,
+            quality INTEGER DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, sleep_date)
+        )
+    """)
     row = con.execute(
         "SELECT hours, quality FROM sleep WHERE user_id=? AND sleep_date=?",
         (user_id, str(sleep_date)),
@@ -502,12 +536,23 @@ def get_sleep(user_id, sleep_date):
 
 def save_sleep(user_id, sleep_date, hours, quality):
     con = db()
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS sleep (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sleep_date TEXT NOT NULL,
+            hours REAL DEFAULT 0,
+            quality INTEGER DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, sleep_date)
+        )
+    """)
     con.execute(
         """
         INSERT INTO sleep (user_id, sleep_date, hours, quality) VALUES (?,?,?,?)
         ON CONFLICT(user_id, sleep_date) DO UPDATE SET hours=excluded.hours, quality=excluded.quality
     """,
-        (user_id, str(sleep_date), hours, quality),
+        (user_id, sleep_date, hours, quality),
     )
     con.commit()
     con.close()
@@ -620,241 +665,4 @@ else:
             status_label = get_status_info(today_score, curr_lang)
 
             recent_30 = [v["percent"] for v in list(records.values())[-30:]]
-            month_score = round(sum(recent_30) / len(recent_30), 1)
-
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric(t["streak"], f"🔥 {streak}")
-        col2.metric(t["today_perf"], f"{today_score}%")
-        col3.metric(t["avg_30"], f"{month_score}%")
-        col4.metric(t["status"], status_label)
-
-    # 2. Daily Record
-    elif page == t["daily_record"]:
-        st.header(t["daily_record"])
-        sel_date = st.date_input("Date / تاریخ", date.today())
-        d_str = str(sel_date)
-        habits = get_habits(uid)
-        tot_weight = sum([h[3] for h in habits]) or 1
-
-        existing_record = get_records(uid).get(d_str, {}).get("details", {})
-
-        details = {}
-        total_score = 0
-        for h in habits:
-            init_val = existing_record.get(h[1], 0)
-            val = st.slider(
-                f"{h[1]} ({h[3]}%)", 0, 100, int(init_val), key=f"h_{h[0]}_{d_str}"
-            )
-            details[h[1]] = val
-            total_score += (val * h[3]) / tot_weight
-
-        avg_score = round(total_score, 1)
-        status_label = get_status_info(avg_score, curr_lang)
-
-        c1, c2 = st.columns(2)
-        c1.metric(t["today_perf"], f"{avg_score}%")
-        c2.metric(t["status"], status_label)
-
-        if st.button(t["save"]):
-            save_record(uid, d_str, avg_score, details)
-            st.success("ذخیره شد!")
-
-    # 3. Habits
-    elif page == t["habits"]:
-        st.header(t["habits"])
-        habits = get_habits(uid)
-        if habits:
-            df_h = pd.DataFrame(
-                habits, columns=["ID", "Name", "Category", "Weight (%)", "Active"]
-            )
-            st.dataframe(
-                df_h[["Name", "Category", "Weight (%)"]], use_container_width=True
-            )
-
-        st.subheader("➕ افزودن عادت")
-        h_name = st.text_input("نام عادت")
-        h_cat = st.selectbox(
-            "دسته‌بندی", ["سلامت", "یادگیری", "مهارت", "عمومی"]
-        )
-        h_weight = st.number_input("وزن (%)", 1, 100, 20)
-        if st.button("افزودن"):
-            if add_habit(uid, h_name, h_cat, h_weight):
-                st.success("عادت اضافه شد.")
-                st.rerun()
-
-    # 4. Tasks
-    elif page == t["tasks"]:
-        st.header(t["tasks"])
-        t_date = st.date_input("تاریخ", date.today())
-        tasks = get_tasks(uid, t_date)
-
-        st.subheader(f"📋 کارهای تاریخ {t_date}:")
-        if tasks:
-            for task in tasks:
-                chk = st.checkbox(
-                    f"{task[1]} ({task[2]})", value=bool(task[3]), key=f"t_{task[0]}"
-                )
-                if chk != bool(task[3]):
-                    toggle_task(task[0], chk)
-                    st.rerun()
-        else:
-            st.info("هیچ کاری ثبت نشده است.")
-
-        st.subheader("➕ افزودن کار جدید")
-        t_title = st.text_input("عنوان کار")
-        t_prio = st.selectbox("اولویت", ["High", "Medium", "Low"])
-        if st.button("ثبت کار"):
-            if t_title:
-                add_task(uid, t_date, t_title, t_prio)
-                st.success("کار اضافه شد.")
-                st.rerun()
-
-    # 5. Goals
-    elif page == t["goals"]:
-        st.header(t["goals"])
-        goals = get_goals(uid)
-        if goals:
-            for g in goals:
-                st.subheader(f"{g[1]} ({g[5]})")
-                st.write(f"توضیحات: {g[2]} | مهلت: {g[3]}")
-                prog = st.slider("درصد پیشرفت", 0, 100, g[4], key=f"g_{g[0]}")
-                if prog != g[4]:
-                    update_goal_progress(g[0], prog)
-                st.divider()
-        else:
-            st.info("هیچ هدفی ثبت نشده است.")
-
-        st.subheader("➕ ایجاد هدف جدید")
-        g_title = st.text_input("عنوان هدف")
-        g_desc = st.text_area("توضیحات")
-        g_dl = st.date_input("مهلت زمانی", date.today() + timedelta(days=30))
-        g_cat = st.selectbox(
-            "دسته‌بندی", ["شغلی", "تحصیلی", "مالی", "شخصی"]
-        )
-        if st.button("ثبت هدف"):
-            if g_title:
-                add_goal(uid, g_title, g_desc, g_dl, g_cat)
-                st.success("هدف ایجاد شد.")
-                st.rerun()
-
-    # 6. Growth Chart
-    elif page == t["growth"]:
-        st.header(t["growth"])
-        records = get_records(uid)
-
-        if records:
-            data = []
-            for d_str, v in records.items():
-                score = v["percent"]
-                label = get_status_info(score, curr_lang)
-                data.append(
-                    {"Date": d_str, "Performance (%)": score, "Status": label}
-                )
-
-            df = pd.DataFrame(data)
-
-            st.dataframe(
-                df.sort_values(by="Date", ascending=False),
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            fig = px.line(
-                df,
-                x="Date",
-                y="Performance (%)",
-                hover_data=["Status"],
-                markers=True,
-                title="نمودار روند رشد",
-            )
-            # حذف فواصل خالی بین روزها در گراف
-            fig.update_xaxes(type="category")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("هنوز داده‌ای ثبت نشده است.")
-
-    # 7. Achievements
-    elif page == t["achievements"]:
-        st.header(t["achievements"])
-        records = get_records(uid)
-        streak = calculate_streak(records)
-        st.write(
-            f"**مدال اولین ثبت:** {'✅' if len(records) >= 1 else '❌'} (حداقل ۱"
-            " روز ثبت)"
-        )
-        st.write(
-            f"**تداوم ۷ روزه:** {'✅' if streak >= 7 else '❌'} (۷ روز پشت سر"
-            " هم)"
-        )
-        st.write(
-            f"**استاد ۳۰ روزه:** {'✅' if streak >= 30 else '❌'} (۳۰ روز پشت"
-            " سر هم)"
-        )
-
-    # 8. Smart Analysis
-    elif page == t["smart_analysis"]:
-        st.header(t["smart_analysis"])
-        records = get_records(uid)
-        if records:
-            avg_all = round(
-                sum([v["percent"] for v in records.values()]) / len(records), 1
-            )
-            overall_status = get_status_info(avg_all, curr_lang)
-            st.info(
-                f"میانگین کل عملکرد شما: **{avg_all}%** (وضعیت کلی:"
-                f" **{overall_status}**)"
-            )
-        else:
-            st.info("داده‌ای برای تحلیل وجود ندارد.")
-
-    # 9. Journal (ژورنال روزانه با ایموجی)
-    elif page == t["journal"]:
-        st.header(t["journal"])
-        j_date = st.date_input("تاریخ", date.today())
-        curr_j = get_journal(uid, j_date)
-
-        mood_options = [
-            "😃 عالی / Excellent",
-            "🙂 خوب / Good",
-            "😐 معمولی / Normal",
-            "😔 غمگین / Sad",
-            "😡 عصبانی / Angry",
-        ]
-        
-        default_mood_idx = 0
-        if curr_j and curr_j[0]:
-            for idx, m_opt in enumerate(mood_options):
-                if curr_j[0] in m_opt or m_opt in curr_j[0]:
-                    default_mood_idx = idx
-                    break
-
-        mood = st.selectbox("حالت روحی / Mood", mood_options, index=default_mood_idx)
-        default_note = curr_j[1] if curr_j and len(curr_j) > 1 and curr_j[1] else ""
-        note = st.text_area("یادداشت روزانه / Note", value=default_note)
-
-        if st.button(t["save"]):
-            save_journal(uid, j_date, mood, note)
-            st.success("ژورنال با موفقیت ذخیره شد!")
-
-    # 10. Sleep
-    elif page == t["sleep"]:
-        st.header(t["sleep"])
-        s_date = st.date_input("تاریخ", date.today())
-        curr_s = get_sleep(uid, s_date)
-
-        hours = st.number_input(
-            "ساعات خواب", 0.0, 24.0, curr_s[0] if curr_s else 7.0, step=0.5
-        )
-        quality = st.slider(
-            "کیفیت خواب (۱ تا ۱۰)", 1, 10, curr_s[1] if curr_s else 7
-        )
-        if st.button(t["save"]):
-            save_sleep(uid, s_date, hours, quality)
-            st.success("اطلاعات خواب ذخیره شد!")
-
-    # 11. Settings
-    elif page == t["settings"]:
-        st.header(t["settings"])
-        st.write(f"**نام کاربری:** {user['username']}")
-        st.write(f"**ایمیل:** {user['email']}")
-        st.write(f"**زبان فعال:** {curr_lang.upper()}")
+           
